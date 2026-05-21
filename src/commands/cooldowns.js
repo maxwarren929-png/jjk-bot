@@ -44,6 +44,15 @@ module.exports = {
       lines.push(`🏋️ **Training (${player.training_type})** — ${remain}m remaining`);
     }
 
+    // Courier delivery
+    if (player.job === 'courier') {
+      const jobData = (() => { try { return JSON.parse(player.job_data || '{}'); } catch { return {}; } })();
+      if (jobData.courier_until && jobData.courier_until > now) {
+        const remain = Math.ceil((jobData.courier_until - now) / 60000);
+        lines.push(`📦 **Courier Delivery** — **${jobData.courier_pay} 💰** (${remain}m remaining)`);
+      }
+    }
+
     // Daily cooldown
     const DAY_MS = 86400000;
     if (player.last_daily_at && now - player.last_daily_at < DAY_MS) {

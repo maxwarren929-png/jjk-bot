@@ -33,7 +33,8 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('inventory')
     .setDescription('View your items and consumables.')
-    .addSubcommand(sub => sub.setName('view').setDescription('View your inventory.'))
+    .addSubcommand(sub => sub.setName('view').setDescription('View inventory.')
+      .addUserOption(opt => opt.setName('user').setDescription('Player to inspect (defaults to you)').setRequired(false)))
     .addSubcommand(sub => sub
       .setName('use')
       .setDescription('Use a consumable item from your inventory.')
@@ -66,11 +67,12 @@ module.exports = {
     if (sub === 'give') return giveItem(interaction);
 
     await interaction.deferReply();
-    const player = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
-    if (!player) return interaction.editReply('❌ Run `/profile` first.');
+    const targetUser = interaction.options.getUser('user') || interaction.user;
+    const player = db.select().from(players).where(eq(players.discord_id, targetUser.id)).get();
+    if (!player) return interaction.editReply(`❌ **${targetUser.username}** has no profile.`);
 
     const embed = new EmbedBuilder()
-      .setTitle(`🎒 ${interaction.user.username}'s Inventory`)
+      .setTitle(`🎒 ${targetUser.username}'s Inventory`)
       .setColor(0x3498DB)
       .addFields(
         { name: '👛 Wallet', value: `${player.yen.toLocaleString()} 💰`, inline: true },

@@ -200,7 +200,7 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
     const freshActor = db.select().from(players).where(eq(players.discord_id, actor.discord_id)).get();
     const freshTarget = db.select().from(players).where(eq(players.discord_id, target.discord_id)).get();
     if (freshActor) {
-      const setData = { ce: actorState.ce };
+      const setData = { ce: Math.max(0, freshActor.ce - tech.ce_cost) };
       if (rewards && freshTarget) {
         let stolenYen = freshTarget.yen + (freshTarget.bank_balance || 0);
         const targetClanBonus = getPlayerClanBonus(target.discord_id);
@@ -214,7 +214,7 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
 
         setData.yen = freshActor.yen + stolenYen + yenBonus;
         setData.fight_wins = newWins;
-        setData.ce = Math.min(actorState.ce + 10, freshActor.max_ce);
+        setData.ce = Math.min(Math.max(0, freshActor.ce - tech.ce_cost) + 10, freshActor.max_ce);
         setData.hp = freshActor.hp;
 
         rewards.yenLoss = stolenYen;
@@ -228,7 +228,7 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
 
         let newRep = freshActor.reputation;
         if (newWins >= 10 && newRep === 'Neutral') newRep = 'Honored';
-        if (freshActor.bounty_kills >= 5) newRep = 'Feared';
+        if ((freshActor.bounty_kills || 0) + (bountyResult ? 1 : 0) >= 5) newRep = 'Feared';
         if (newRep !== freshActor.reputation) setData.reputation = newRep;
 
         const tempPlayer = { ...freshActor, fight_wins: newWins };

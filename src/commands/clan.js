@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { db } = require('../db/index');
-const { players } = require('../db/schema');
+const { players, clans: clansTable, clan_members } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 const { createClan, inviteToClan, joinClan, leaveClan, getClanByName, getMembership, getMembers, getClan, transferLeadership, kickFromClan, renameClan, disbandClan, getPendingInvites, setPassive, setInviteOnly, setDescription, PASSIVE_OPTIONS, PASSIVE_COST } = require('../systems/clans');
 
@@ -45,7 +45,8 @@ module.exports = {
     .addSubcommand(sub => sub.setName('setinviteonly').setDescription('Toggle invite-only mode (leader only).')
       .addBooleanOption(o => o.setName('enabled').setDescription('Invite-only on or off').setRequired(true)))
     .addSubcommand(sub => sub.setName('setdescription').setDescription('Set your clan description (leader only, max 200 chars).')
-      .addStringOption(o => o.setName('text').setDescription('New description').setRequired(true))),
+      .addStringOption(o => o.setName('text').setDescription('New description').setRequired(true)))
+    .addSubcommand(sub => sub.setName('top').setDescription('View the clan leaderboard ranked by total member wealth.')),
 
   async execute(interaction) {
     await interaction.deferReply();
@@ -215,6 +216,36 @@ module.exports = {
       col.on('end', (_, reason) => {
         if (reason === 'time') interaction.editReply({ components: [] }).catch(() => {});
       });
+    } else if (sub === 'top') {
+      const allClans = db.select().from(clansTable).all();
+      if (!allClans.length) {
+        await interaction.editReply('❌ No clans exist yet.');
+        return;
+      }
+
+      const ranked = allClans.map(c => {
+        const members = db.select().from(clan_members).where(eq(clan_members.clan_id, c.id)).all();
+        const memberDiscordIds = members.map(m => m.player_id);
+        let totalWealth = 0;
+        let memberCount = members.length;
+        for (const mid of memberDiscordIds) {
+          const p = db.select().from(players).where(eq(players.discord_id, mid)).get();
+          if (p) totalWealth += p.yen + (p.bank_balance || 0);
+        }
+        return { name: c.name, totalWealth, memberCount, id: c.id };
+      })
+        .sort((a, b) => b.totalWealth - a.totalWealth)
+        .slice(0, 10);
+
+      const embed = new EmbedBuilder()
+        .setTitle('🏆 Clan Leaderboard')
+        .setColor(0xF1C40F)
+        .setDescription(ranked.map((r, i) => {
+          const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+          return `${medal} **${r.name}** — ${r.totalWealth.toLocaleString()} 💰 (${r.memberCount} member${r.memberCount !== 1 ? 's' : ''})`;
+        }).join('\n'));
+
+      await interaction.editReply({ embeds: [embed] });
     }
   },
 };

@@ -97,11 +97,12 @@ function transferYen(fromId, toId, amount) {
       if (fFrom.yen < amount) { result = { error: 'Insufficient yen.' }; return; }
       db.update(players).set({ yen: fFrom.yen - amount }).where(eq(players.discord_id, fromId)).run();
       db.update(players).set({ yen: fTo.yen + amount }).where(eq(players.discord_id, toId)).run();
+      result = { ok: true };
     })();
   } catch (err) {
     console.error(`[${new Date().toISOString()}] economy.js: transferYen txn failed — ${err.message}`);
   }
-  return result || { ok: true };
+  return result || { error: 'Transaction failed. Try again.' };
 }
 
 const CONSUMABLE_EFFECTS = ['CE_RESTORE_50', 'SILENCE_NEXT', 'BONUS_DAMAGE_20', 'EXIT_BROKEN'];
