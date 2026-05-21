@@ -48,6 +48,8 @@ module.exports = {
       .setDescription('Use a consumable item from your inventory.')
       .addStringOption(opt => opt.setName('item').setDescription('Item to use').setRequired(true)
         .addChoices(
+          { name: '❤️‍🔥 HP Potion (restore 100 HP)', value: 'HP_RESTORE_100' },
+          { name: '💚 CE Elixir (restore 30 CE)', value: 'CE_RESTORE_30' },
           { name: '💜 CE Potion (restore 50 CE)', value: 'CE_RESTORE_50' },
           { name: '🧪 Healing Vial (exit Broken + 50 HP)', value: 'EXIT_BROKEN' },
         )))
@@ -222,13 +224,7 @@ async function useItem(interaction) {
   const player = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
   if (!player) return interaction.editReply('❌ Run `/profile` first.');
 
-  const jobData = (() => { try { return JSON.parse(player.job_data || '{}'); } catch { return {}; } })();
-  const items = jobData.__items || [];
-  const idx = items.indexOf(itemKey);
-  if (idx === -1) return interaction.editReply(`❌ You don't have a **${(USEABLE_ITEMS[itemKey]?.name) || itemKey}**. Buy one from \`/shop\`.`);
-
-  items.splice(idx, 1);
-  const resultText = USEABLE_ITEMS[itemKey].desc;
+  const resultText = USEABLE_ITEMS[itemKey]?.desc || '';
 
   let skipped = null;
   sqlite.transaction(() => {
@@ -237,14 +233,11 @@ async function useItem(interaction) {
     const freshJob = (() => { try { return JSON.parse(fresh.job_data || '{}'); } catch { return {}; } })();
     const freshItems = freshJob.__items || [];
     const fIdx = freshItems.indexOf(itemKey);
-    if (fIdx === -1) return;
-    freshItems.splice(fIdx, 1);
-    freshJob.__items = freshItems;
+    if (fIdx === -1) { skipped = `❌ You don't have a **${(USEABLE_ITEMS[itemKey]?.name) || itemKey}**.`; return; }
 
     if (itemKey === 'CE_RESTORE_50' || itemKey === 'CE_RESTORE_30') {
       if (fresh.ce >= fresh.max_ce) {
         skipped = 'Your CE is already full. Save it for later.';
-        db.update(players).set({ job_data: JSON.stringify(freshJob) }).where(eq(players.discord_id, interaction.user.id)).run();
         return;
       }
     }
@@ -252,7 +245,6 @@ async function useItem(interaction) {
     if (itemKey === 'HP_RESTORE_100') {
       if (fresh.hp >= fresh.max_hp) {
         skipped = 'Your HP is already full. Save it for later.';
-        db.update(players).set({ job_data: JSON.stringify(freshJob) }).where(eq(players.discord_id, interaction.user.id)).run();
         return;
       }
     }
@@ -260,10 +252,12 @@ async function useItem(interaction) {
     if (itemKey === 'EXIT_BROKEN') {
       if (!fresh.is_broken) {
         skipped = 'You are not Broken. No need for a Healing Vial.';
-        db.update(players).set({ job_data: JSON.stringify(freshJob) }).where(eq(players.discord_id, interaction.user.id)).run();
         return;
       }
     }
+
+    freshItems.splice(fIdx, 1);
+    freshJob.__items = freshItems;
 
     const update = {};
     if (itemKey === 'CE_RESTORE_50') update.ce = Math.min(fresh.ce + 50, fresh.max_ce);

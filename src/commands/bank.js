@@ -10,7 +10,7 @@ const BANK_TIERS = [
   { level: 2, max: 20000, cost: 2000, name: 'Iron Vault' },
   { level: 3, max: 50000, cost: 5000, name: 'Steel Depository' },
   { level: 4, max: 200000, cost: 15000, name: 'Cursed Treasury' },
-  { level: 5, max: Infinity, cost: 50000, name: 'Infinite Abyss' },
+  { level: 5, max: Number.MAX_SAFE_INTEGER, cost: 50000, name: 'Infinite Abyss' },
 ];
 
 function getTier(bankMax) {
@@ -128,11 +128,11 @@ module.exports = {
         const done = new EmbedBuilder()
           .setTitle('⬆️ Bank Upgraded!')
           .setColor(0x2ECC71)
-          .setDescription(`**${next.name}** — ${next.max === Infinity ? '♾️ Unlimited' : `${next.max.toLocaleString()} 💰 max`}`);
+           .setDescription(`**${next.name}** — ${next.max === Number.MAX_SAFE_INTEGER ? '♾️ Unlimited' : `${next.max.toLocaleString()} 💰 max`}`);
         await interaction.editReply({ embeds: [done], components: [] });
         try {
           const { checkAndUnlock } = require('../systems/achievements');
-          if (next.max === Infinity) {
+          if (next.max === Number.MAX_SAFE_INTEGER) {
             const ach = checkAndUnlock(interaction.user.id, 'max_bank');
             if (ach) await interaction.followUp({ content: `🏆 **Achievement Unlocked: ${ach.icon} ${ach.name}!**`, ephemeral: true }).catch(() => {});
           }

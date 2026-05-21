@@ -37,7 +37,7 @@ module.exports = {
         streak = 0;
       }
       const baseYen = DAILY_YEN[player.grade] || 40;
-      const nextBonus = streak >= STREAK_CAP ? 0 : streak * STREAK_BONUS_PER;
+      const nextBonus = streak >= STREAK_CAP ? (STREAK_CAP - 1) * STREAK_BONUS_PER : streak * STREAK_BONUS_PER;
       const nextTotal = baseYen + nextBonus;
       const canClaim = !player.last_daily_at || now - player.last_daily_at >= DAY_MS;
       const embed = new EmbedBuilder()

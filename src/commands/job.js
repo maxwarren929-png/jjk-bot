@@ -143,7 +143,12 @@ async function requireJob(interaction, player, job) {
 async function apply(interaction, player) {
   const job = interaction.options.getString('job');
   if (player.job) return interaction.editReply(`❌ You already have a job: **${player.job}**. Quit first with \`/job quit\`.`);
-  db.update(players).set({ job, job_data: '{}' }).where(eq(players.discord_id, interaction.user.id)).run();
+  const jData = (() => { try { return JSON.parse(player.job_data || '{}'); } catch { return {}; } })();
+  const preserved = {};
+  for (const key of Object.keys(jData)) {
+    if (key.startsWith('__')) preserved[key] = jData[key];
+  }
+  db.update(players).set({ job, job_data: JSON.stringify(preserved) }).where(eq(players.discord_id, interaction.user.id)).run();
   const embed = new EmbedBuilder()
     .setTitle('✅ Job Application Accepted')
     .setColor(0x2ECC71)
@@ -154,7 +159,12 @@ async function apply(interaction, player) {
 
 async function quit(interaction, player) {
   if (!player.job) return interaction.editReply('❌ You don\'t have a job.');
-  db.update(players).set({ job: null, job_data: '{}' }).where(eq(players.discord_id, interaction.user.id)).run();
+  const qData = (() => { try { return JSON.parse(player.job_data || '{}'); } catch { return {}; } })();
+  const preserved = {};
+  for (const key of Object.keys(qData)) {
+    if (key.startsWith('__')) preserved[key] = qData[key];
+  }
+  db.update(players).set({ job: null, job_data: JSON.stringify(preserved) }).where(eq(players.discord_id, interaction.user.id)).run();
   await interaction.editReply(`✅ Quit **${player.job}**.`);
 }
 

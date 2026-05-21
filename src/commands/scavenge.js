@@ -24,10 +24,6 @@ module.exports = {
     if (!player) return interaction.editReply('❌ Run `/profile` first.');
 
     const now = Date.now();
-    if (player.last_hunt_at && now - player.last_hunt_at < COOLDOWN) {
-      const secs = Math.ceil((COOLDOWN - (now - player.last_hunt_at)) / 1000);
-      return interaction.editReply(`⏳ Scavenge cooldown: **${secs}s** remaining.`);
-    }
 
     const totalWeight = LOOT_TABLE.reduce((s, i) => s + i.weight, 0);
     let roll = Math.floor(Math.random() * totalWeight);
@@ -40,7 +36,12 @@ module.exports = {
     let result = null;
     sqlite.transaction(() => {
       const fresh = db.select().from(players).where(eq(players.discord_id, userId)).get();
-      if (!fresh) return;
+      if (!fresh) { result = '❌ Run `/profile` first.'; return; }
+      if (fresh.last_hunt_at && now - fresh.last_hunt_at < COOLDOWN) {
+        const secs = Math.ceil((COOLDOWN - (now - fresh.last_hunt_at)) / 1000);
+        result = `⏳ Scavenge cooldown: **${secs}s** remaining.`;
+        return;
+      }
       const freshJob = (() => { try { return JSON.parse(fresh.job_data || '{}'); } catch { return {}; } })();
       if (loot.type === 'yen') {
         const amount = Math.floor(Math.random() * (loot.max - loot.min + 1)) + loot.min;
@@ -53,6 +54,7 @@ module.exports = {
         result = { desc: loot.label, label: loot.label };
       }
     })();
+    if (typeof result === 'string') return interaction.editReply(result);
 
     if (!result) return interaction.editReply('❌ Something went wrong. Try again.');
 

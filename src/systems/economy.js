@@ -87,6 +87,7 @@ function applyShopEffect(player, itemId) {
           break;
         }
         case 'UNLOCK_ANY':
+          db.update(players).set(update).where(eq(players.discord_id, player.discord_id)).run();
           return { ok: true, item, needsTechniquePick: true };
         default: {
           const job = safeParse(fresh.job_data);

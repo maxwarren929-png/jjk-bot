@@ -21,12 +21,12 @@ module.exports = {
       .setTitle('⚔️ Last Fight')
       .setColor(fight.won ? 0x2ECC71 : 0xE74C3C)
       .addFields(
-        { name: '🎯 Target', value: fight.target, inline: true },
-        { name: '⚔️ Technique', value: fight.technique, inline: true },
-        { name: '💥 Damage', value: `${fight.damage}`, inline: true },
+        { name: '🎯 Target', value: fight.target || 'Unknown', inline: true },
+        { name: '⚔️ Technique', value: fight.technique || 'Unknown', inline: true },
+        { name: '💥 Damage', value: `${fight.damage || 0}`, inline: true },
         { name: '🏆 Result', value: fight.won ? '✅ Victory' : '❌ Defeat', inline: true },
-        { name: '💰 Yen Earned', value: `${fight.yenEarned.toLocaleString()} 💰`, inline: true },
-        { name: '🕐 When', value: `<t:${Math.floor(fight.time / 1000)}:R>`, inline: true },
+        { name: '💰 Yen Earned', value: `${(fight.yenEarned || 0).toLocaleString()} 💰`, inline: true },
+        { name: '🕐 When', value: `<t:${Math.floor((fight.time || Date.now()) / 1000)}:R>`, inline: true },
       );
 
     await interaction.editReply({ embeds: [embed] });

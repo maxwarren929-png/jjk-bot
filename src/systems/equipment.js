@@ -124,7 +124,7 @@ function enhanceItem(discordId, slot) {
 }
 
 function formatEquipmentEmbed(discordId) {
-  const eq = getEquipment(discordId);
+  const eq = getEquipment(discordId) || {};
   const player = db.select().from(players).where(eq(players.discord_id, discordId)).get();
   const enh = player ? (safeParse(player.job_data).__enhancements || {}) : {};
   const lines = [];

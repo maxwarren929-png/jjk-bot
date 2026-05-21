@@ -19,22 +19,35 @@ module.exports = {
 
     const job = (() => { try { return JSON.parse(player.job_data || '{}'); } catch { return {}; } })();
     const restUntil = job.__rest_until;
-    if (restUntil && restUntil > Date.now()) {
-      const remaining = restUntil - Date.now();
-      if (remaining > REST_DURATION * 2) {
+    const now = Date.now();
+    if (restUntil) {
+      if (restUntil > now) {
+        const remaining = restUntil - now;
+        if (remaining > REST_DURATION * 2) {
+          delete job.__rest_until;
+          sqlite.transaction(() => {
+            db.update(players).set({ job_data: JSON.stringify(job) }).where(eq(players.discord_id, interaction.user.id)).run();
+          })();
+        } else {
+          const secs = Math.ceil(remaining / 1000);
+          return interaction.editReply(`❌ You are already resting. **${secs}s** remaining.`);
+        }
+      } else {
         delete job.__rest_until;
         sqlite.transaction(() => {
-          db.update(players).set({ job_data: JSON.stringify(job) }).where(eq(players.discord_id, interaction.user.id)).run();
+          const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+          if (!fresh) return;
+          const missedRecover = Math.floor(fresh.max_hp * REST_HP_PCT);
+          const newHp = Math.min(fresh.hp + missedRecover, fresh.max_hp);
+          db.update(players).set({ hp: newHp, job_data: JSON.stringify(job) }).where(eq(players.discord_id, interaction.user.id)).run();
         })();
-      } else {
-        const secs = Math.ceil(remaining / 1000);
-        return interaction.editReply(`❌ You are already resting. **${secs}s** remaining.`);
+        await interaction.editReply('💤 You recovered from a previous rest that was interrupted!');
+        return;
       }
     }
 
     if (player.hp >= player.max_hp) return interaction.editReply('❌ Your HP is already full.');
 
-    const recover = Math.floor(player.max_hp * REST_HP_PCT);
     sqlite.transaction(() => {
       const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
       if (!fresh) return;
@@ -43,6 +56,7 @@ module.exports = {
       db.update(players).set({ job_data: JSON.stringify(fJob) }).where(eq(players.discord_id, interaction.user.id)).run();
     })();
 
+    const recover = Math.floor(player.max_hp * REST_HP_PCT);
     await interaction.editReply(`💤 You start resting. You'll recover **${recover} HP** in **30s**.`);
 
     const userId = interaction.user.id;

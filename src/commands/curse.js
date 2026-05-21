@@ -44,7 +44,8 @@ module.exports = {
       result = true;
     })();
 
-    if (!result) return;
+    if (typeof result === 'string') return interaction.editReply(result);
+    if (result !== true) return interaction.editReply('❌ Something went wrong. Try again.');
     activeCurses.set(userId, now);
 
     const embed = new EmbedBuilder()

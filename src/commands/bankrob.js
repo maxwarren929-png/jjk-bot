@@ -200,7 +200,7 @@ module.exports = {
           for (const uid of heist.members) {
             const p = db.select().from(players).where(eq(players.discord_id, uid)).get();
             if (p) {
-              const fine = Math.max(FAIL_FINE_MIN, Math.floor(p.yen * FAIL_FINE_PCT));
+              const fine = Math.min(p.yen, Math.max(FAIL_FINE_MIN, Math.floor(p.yen * FAIL_FINE_PCT)));
               db.update(players).set({ yen: p.yen - fine, last_robbed_at: Date.now() })
                 .where(eq(players.discord_id, uid)).run();
             }

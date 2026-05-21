@@ -18,8 +18,9 @@ module.exports = {
                + '`/techniques` — View your techniques with mastery\n'
                + '`/techniqueinfo <technique>` — Detailed technique stats\n'
                + '`/rank` — View your PvP rating and leaderboard position\n'
-               + '`/lastfight` — View your most recent combat result\n'
-               + '`/cooldowns` — View all active cooldowns\n'
+                + '`/lastfight` — View your most recent combat result\n'
+                + '`/analyze <target>` — Scout another player\'s combat stats\n'
+                + '`/cooldowns` — View all active cooldowns\n'
                + '`/rest` — Rest for 30s to recover 30% HP\n'
                + '`/meditate` — Meditate for 60s to recover 90 CE in bursts\n'
                + '`/train start <type>` — Begin a 2-hour training session\n'
@@ -40,6 +41,9 @@ module.exports = {
                 + '`/rob <target>` — Try to steal wallet yen (1h cooldown)\n'
                 + '`/hunt` — Hunt cursed spirits for CE, yen, and items (30m cooldown)\n'
                 + '`/curse <target>` — Place a debuff on a player (-20% dmg, 2 min)\n'
+                + '`/curseinfo` — Check your active curses and debuffs\n'
+                + '`/rebuke` — Remove active curses by spending CE\n'
+                + '`/sacrifice <hp>` — Convert HP to CE (2:1 ratio)\n'
                 + '`/bless <target> <amount>` — Heal a player by spending CE',
           inline: false,
         },
@@ -50,7 +54,8 @@ module.exports = {
                + '`/shop` — Browse and buy items\n'
                + '`/buy <item> [quantity]` — Quick-buy with bulk support\n'
                + '`/stats` — Server-wide statistics\n'
-               + '`/info` — Bot and server information\n'
+                + '`/info` — Bot and server information\n'
+                + '`/version` — Show bot version, uptime, and git info\n'
                + '`/today` — Daily activity summary\n'
                + '`/voterewards` — Claim daily voting reward (CE + yen)\n'
                + '`/enhance <slot>` — Upgrade equipped gear with CE\n'

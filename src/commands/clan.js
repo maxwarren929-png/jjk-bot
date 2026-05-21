@@ -60,7 +60,7 @@ module.exports = {
     const discordId = interaction.user.id;
     const player = db.select().from(players).where(eq(players.discord_id, discordId)).get();
 
-    if (!player && sub !== 'info') {
+    if (!player && !['info', 'list', 'top'].includes(sub)) {
       await interaction.editReply('❌ Run `/profile` first.'); return;
     }
 

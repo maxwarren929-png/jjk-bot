@@ -25,7 +25,7 @@ function getTechsForPlayer(player) {
 }
 
 function buildBar(current, max, filled = '🟥', empty = '⬛', blocks = 10) {
-  const pct = Math.max(0, current / max);
+  const pct = max > 0 ? Math.max(0, current / max) : 0;
   const filledCount = Math.round(pct * blocks);
   return filled.repeat(filledCount) + empty.repeat(blocks - filledCount);
 }
@@ -102,13 +102,12 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
     const freshJob = (() => { try { return JSON.parse(freshActorData.job_data || '{}'); } catch { return {}; } })();
     const freshStatuses = freshJob.__statuses || {};
     if (freshStatuses.silenced_until && freshStatuses.silenced_until > Date.now()) {
-      delete freshJob.__statuses;
       sqlite.transaction(() => {
         const reFetch = db.select().from(players).where(eq(players.discord_id, actor.discord_id)).get();
         if (!reFetch) return;
         const reJob = (() => { try { return JSON.parse(reFetch.job_data || '{}'); } catch { return {}; } })();
         delete reJob.__statuses;
-        db.update(players).set({ ce: Math.max(0, reFetch.ce - tech.ce_cost), job_data: JSON.stringify(reJob) }).where(eq(players.discord_id, actor.discord_id)).run();
+        db.update(players).set({ job_data: JSON.stringify(reJob) }).where(eq(players.discord_id, actor.discord_id)).run();
       })();
       return { ok: true, damage: 0, log: `🔇 **${actor.username}** is silenced — the attack fizzled!`, targetHp: targetState.hp, rewards: null, actor: actorState, target: targetState };
     }
@@ -381,7 +380,7 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
     if (rewards) {
       const histActor = db.select().from(players).where(eq(players.discord_id, actor.discord_id)).get();
       if (histActor) {
-        const haJob = JSON.parse(histActor.job_data || '{}');
+        const haJob = (() => { try { return JSON.parse(histActor.job_data || '{}'); } catch { return {}; } })();
         if (!haJob.__fight_history) haJob.__fight_history = [];
         haJob.__fight_history.unshift({ timestamp: now, opponent: target.username, opponentId: target.discord_id, technique: tech.name, damage, result: 'win', yenEarned: rewards.yenBonus || 0 });
         if (haJob.__fight_history.length > 10) haJob.__fight_history.length = 10;
@@ -389,7 +388,7 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
       }
       const histTarget = db.select().from(players).where(eq(players.discord_id, target.discord_id)).get();
       if (histTarget) {
-        const htJob = JSON.parse(histTarget.job_data || '{}');
+        const htJob = (() => { try { return JSON.parse(histTarget.job_data || '{}'); } catch { return {}; } })();
         if (!htJob.__fight_history) htJob.__fight_history = [];
         htJob.__fight_history.unshift({ timestamp: now, opponent: actor.username, opponentId: actor.discord_id, technique: tech.name, damage, result: 'loss', yenLost: rewards.yenLoss || 0 });
         if (htJob.__fight_history.length > 10) htJob.__fight_history.length = 10;
