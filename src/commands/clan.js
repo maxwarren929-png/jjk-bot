@@ -1,8 +1,8 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { db } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
-const { createClan, inviteToClan, joinClan, leaveClan, getClanByName, getMembership, getMembers, getClan, transferLeadership, kickFromClan, renameClan } = require('../systems/clans');
+const { createClan, inviteToClan, joinClan, leaveClan, getClanByName, getMembership, getMembers, getClan, transferLeadership, kickFromClan, renameClan, disbandClan } = require('../systems/clans');
 
 const PASSIVE_DESC = {
   CE_REGEN:        '+10% CE regeneration per tick',
@@ -29,7 +29,8 @@ module.exports = {
     .addSubcommand(sub => sub.setName('kick').setDescription('Kick a member from your clan (leader only)')
       .addUserOption(o => o.setName('user').setDescription('Member to kick').setRequired(true)))
     .addSubcommand(sub => sub.setName('rename').setDescription('Rename your clan (leader only)')
-      .addStringOption(o => o.setName('name').setDescription('New clan name').setRequired(true))),
+      .addStringOption(o => o.setName('name').setDescription('New clan name').setRequired(true)))
+    .addSubcommand(sub => sub.setName('disband').setDescription('Permanently delete your clan (leader only). All members ejected.')),
 
   async execute(interaction) {
     await interaction.deferReply();
@@ -107,6 +108,34 @@ module.exports = {
       const result = renameClan(player, newName);
       if (result.error) { await interaction.editReply(`❌ ${result.error}`); return; }
       await interaction.editReply(`✅ Renamed **${result.oldName}** → **${result.newName}**.`);
+    } else if (sub === 'disband') {
+      const membership = getMembership(interaction.user.id);
+      if (!membership || membership.role !== 'Leader') {
+        await interaction.editReply('❌ You are not a clan leader.');
+        return;
+      }
+      const clan = getClan(membership.clan_id);
+      const confirmComp = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('disband_confirm').setLabel(`💥 Disband ${clan.name}`).setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('disband_cancel').setLabel('Cancel').setStyle(ButtonStyle.Secondary),
+      );
+      await interaction.editReply({
+        content: `☠️ **Are you sure?** Disbanding **${clan.name}** will permanently delete it and eject all ${getMembers(clan.id).length} members. There is no undo.`,
+        components: [confirmComp],
+      });
+      const col = interaction.channel.createMessageComponentCollector({ filter: i => i.user.id === interaction.user.id, time: 30_000, max: 1 });
+      col.on('collect', async btn => {
+        await btn.deferUpdate();
+        if (btn.customId === 'disband_cancel') {
+          await interaction.editReply({ content: '✅ Disband cancelled.', components: [] });
+          return;
+        }
+        await interaction.editReply({ content: `💥 Clan **${clan.name}** has been disbanded. All members ejected.`, components: [] });
+        disbandClan(player);
+      });
+      col.on('end', (_, reason) => {
+        if (reason === 'time') interaction.editReply({ components: [] }).catch(() => {});
+      });
     }
   },
 };

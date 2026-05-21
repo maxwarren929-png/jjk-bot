@@ -37,10 +37,13 @@ function applyShopEffect(player, itemId) {
     }
     case 'REROLL_INNATE': {
       const { assignInnate } = require('./techniques');
-      update.unlocked_techniques = '[]';
-      update.innate_removed = false;
-      db.update(players).set(update).where(eq(players.discord_id, player.discord_id)).run();
-      const newId = assignInnate(player.discord_id);
+      let newId;
+      sqlite.transaction(() => {
+        update.unlocked_techniques = '[]';
+        update.innate_removed = false;
+        db.update(players).set(update).where(eq(players.discord_id, player.discord_id)).run();
+        newId = assignInnate(player.discord_id);
+      })();
       return { ok: true, item, newTechniqueId: newId };
     }
     case 'UPGRADE_ROD': {

@@ -135,6 +135,24 @@ function renameClan(leader, newName) {
   return { ok: true, oldName: clan.name, newName };
 }
 
+function disbandClan(leader) {
+  const membership = getMembership(leader.discord_id);
+  if (!membership || membership.role !== 'Leader') return { error: 'You are not a clan leader.' };
+  const clan = getClan(membership.clan_id);
+
+  const members = getMembers(clan.id);
+  sqlite.transaction(() => {
+    db.delete(clan_invites).where(eq(clan_invites.clan_id, clan.id)).run();
+    for (const m of members) {
+      db.update(players).set({ clan_id: null }).where(eq(players.discord_id, m.player_id)).run();
+    }
+    db.delete(clan_members).where(eq(clan_members.clan_id, clan.id)).run();
+    db.delete(clans).where(eq(clans.id, clan.id)).run();
+  })();
+
+  return { ok: true, name: clan.name };
+}
+
 function kickFromClan(leader, targetId) {
   const membership = getMembership(leader.discord_id);
   if (!membership || membership.role !== 'Leader') return { error: 'You are not a clan leader.' };
@@ -182,4 +200,4 @@ function transferLeadership(leader, targetId) {
   return { ok: true, clan };
 }
 
-module.exports = { getClan, getClanByName, getMembership, getMembers, createClan, inviteToClan, joinClan, leaveClan, transferLeadership, kickFromClan, renameClan, getPlayerClanBonus };
+module.exports = { getClan, getClanByName, getMembership, getMembers, createClan, inviteToClan, joinClan, leaveClan, transferLeadership, kickFromClan, renameClan, disbandClan, getPlayerClanBonus };

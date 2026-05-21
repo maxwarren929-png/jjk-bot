@@ -94,6 +94,7 @@ module.exports = {
         { name: '⚔️ Clan', value: clan ? `**${clan.name}**\n${PASSIVE_DESC[clan.passive_bonus] || clan.passive_bonus}` : 'Clanless', inline: true },
         { name: '🎭 Reputation', value: player.reputation, inline: true },
         { name: '💜 CE / 5min', value: `${player.is_broken ? 2 : 5}${getPlayerClanBonus(discordId) === 'CE_REGEN' ? ' *+10% clan bonus*' : ''}`, inline: true },
+        { name: '📅 Sorcerer since', value: `<t:${Math.floor(player.created_at / 1000)}:D>`, inline: false },
       );
 
     if (player.is_broken) {

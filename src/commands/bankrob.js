@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { db } = require('../db/index');
+const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 
@@ -170,31 +170,35 @@ module.exports = {
           : `The robbery on **${heist.targetName}**'s bank was foiled!`);
 
       if (success) {
-        db.update(players).set({ bank_balance: (target.bank_balance || 0) - stolenAmount })
-          .where(eq(players.discord_id, heist.targetId)).run();
-
         let successNames = [];
-        for (const uid of heist.members) {
-          const p = db.select().from(players).where(eq(players.discord_id, uid)).get();
-          if (p) {
-            db.update(players).set({ yen: p.yen + splitAmount, last_robbed_at: Date.now() })
-              .where(eq(players.discord_id, uid)).run();
-            successNames.push(`<@${uid}> (+${splitAmount} 💰)`);
+        sqlite.transaction(() => {
+          db.update(players).set({ bank_balance: (target.bank_balance || 0) - stolenAmount })
+            .where(eq(players.discord_id, heist.targetId)).run();
+
+          for (const uid of heist.members) {
+            const p = db.select().from(players).where(eq(players.discord_id, uid)).get();
+            if (p) {
+              db.update(players).set({ yen: p.yen + splitAmount, last_robbed_at: Date.now() })
+                .where(eq(players.discord_id, uid)).run();
+              successNames.push(`<@${uid}> (+${splitAmount} 💰)`);
+            }
           }
-        }
+        })();
         embed.addFields(
           { name: `🤝 Split (${memberCount} ways)`, value: successNames.join('\n'), inline: false },
           { name: `🎯 Target's Bank`, value: `${(target.bank_balance || 0) - stolenAmount} 💰`, inline: true },
         );
       } else {
-        for (const uid of heist.members) {
-          const p = db.select().from(players).where(eq(players.discord_id, uid)).get();
-          if (p) {
-            const fine = Math.max(FAIL_FINE_MIN, Math.floor(p.yen * FAIL_FINE_PCT));
-            db.update(players).set({ yen: p.yen - fine, last_robbed_at: Date.now() })
-              .where(eq(players.discord_id, uid)).run();
+        sqlite.transaction(() => {
+          for (const uid of heist.members) {
+            const p = db.select().from(players).where(eq(players.discord_id, uid)).get();
+            if (p) {
+              const fine = Math.max(FAIL_FINE_MIN, Math.floor(p.yen * FAIL_FINE_PCT));
+              db.update(players).set({ yen: p.yen - fine, last_robbed_at: Date.now() })
+                .where(eq(players.discord_id, uid)).run();
+            }
           }
-        }
+        })();
         embed.addFields({ name: '💸 Fines Paid', value: `${memberCount} members each lost ${FAIL_FINE_PCT * 100}% of wallet (min ${FAIL_FINE_MIN})`, inline: false });
       }
 

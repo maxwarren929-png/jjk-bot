@@ -47,27 +47,37 @@ module.exports = {
     const roll = Math.random();
     const success = roll < chance;
 
+    let newActorYen, newTargetYen;
     const embed = new EmbedBuilder()
       .setTitle(success ? '🗡️ Robbery Successful' : '🚔 Robbery Failed')
       .setColor(success ? 0x2ECC71 : 0xE74C3C);
 
+    let finalStealAmount = stealAmount;
     if (success) {
       sqlite.transaction(() => {
-        db.update(players).set({ yen: target.yen - stealAmount }).where(eq(players.discord_id, targetUser.id)).run();
-        db.update(players).set({ yen: actor.yen + stealAmount, last_robbed_at: Date.now() }).where(eq(players.discord_id, userId)).run();
+        const fTarget = db.select().from(players).where(eq(players.discord_id, targetUser.id)).get();
+        const fActor = db.select().from(players).where(eq(players.discord_id, userId)).get();
+        const actualSteal = Math.min(Math.floor((fTarget?.yen || 0) * STEAL_PCT), MAX_STEAL);
+        finalStealAmount = actualSteal;
+        db.update(players).set({ yen: (fTarget?.yen || 0) - actualSteal }).where(eq(players.discord_id, targetUser.id)).run();
+        db.update(players).set({ yen: (fActor?.yen || 0) + actualSteal, last_robbed_at: Date.now() }).where(eq(players.discord_id, userId)).run();
+        newActorYen = (fActor?.yen || 0) + actualSteal;
+        newTargetYen = (fTarget?.yen || 0) - actualSteal;
       })();
-      embed.setDescription(`Stole **${stealAmount} 💰** from **${targetUser.username}**'s wallet.`);
+      embed.setDescription(`Stole **${finalStealAmount} 💰** from **${targetUser.username}**'s wallet.`);
     } else {
+      const freshActor = db.select().from(players).where(eq(players.discord_id, userId)).get();
       const fine = Math.max(10, Math.floor(stealAmount * FAIL_FINE_PCT));
-      const actualFine = Math.min(fine, actor.yen);
-      db.update(players).set({ yen: actor.yen - actualFine, last_robbed_at: Date.now() }).where(eq(players.discord_id, userId)).run();
+      const actualFine = Math.min(fine, freshActor?.yen || 0);
+      db.update(players).set({ yen: (freshActor?.yen || 0) - actualFine, last_robbed_at: Date.now() }).where(eq(players.discord_id, userId)).run();
+      newActorYen = (freshActor?.yen || 0) - actualFine;
+      newTargetYen = target.yen;
       embed.setDescription(`Got caught! Paid **${actualFine} 💰** in fines.`);
     }
 
-    const finalFine = success ? 0 : Math.min(Math.max(10, Math.floor(stealAmount * FAIL_FINE_PCT)), actor.yen);
     embed.addFields(
-      { name: `${interaction.user.username} 💰`, value: `${success ? actor.yen + stealAmount : actor.yen - finalFine}`, inline: true },
-      { name: `${targetUser.username} 💰`, value: `${success ? target.yen - stealAmount : target.yen}`, inline: true },
+      { name: `${interaction.user.username} 💰`, value: `${newActorYen}`, inline: true },
+      { name: `${targetUser.username} 💰`, value: `${newTargetYen}`, inline: true },
     );
 
     await interaction.editReply({ embeds: [embed] });

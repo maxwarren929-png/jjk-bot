@@ -21,7 +21,8 @@ module.exports = {
                + '`/techniques` — View your techniques\n'
                + '`/cooldowns` — View all active cooldowns\n'
                + '`/train start <type>` — Begin a 2-hour training session\n'
-               + '`/train status` — Check training progress\n'
+                + '`/train status` — Check training progress\n'
+                + '`/reset` — Permanently delete your profile and start over\n'
                + '`/leaderboard` — Top players by wealth, wins, or grade\n'
                + '`/rankup` — Check grade progression requirements',
           inline: false,
