@@ -174,7 +174,8 @@ async function info(interaction, player) {
       data.courier_until = null;
       data.courier_pay = null;
       saveJobData(interaction.user.id, data);
-      db.update(players).set({ yen: player.yen + pay }).where(eq(players.discord_id, interaction.user.id)).run();
+      const freshInfo = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+      db.update(players).set({ yen: (freshInfo?.yen || 0) + pay }).where(eq(players.discord_id, interaction.user.id)).run();
       embed.addFields({ name: '✅ Delivery Complete', value: `Earned **${pay} 💰**`, inline: false });
     } else {
       embed.addFields({ name: '📦 Status', value: 'Idle — take a delivery with `/job courier`', inline: false });
@@ -229,7 +230,8 @@ async function courier(interaction, player) {
     data.courier_until = null;
     data.courier_pay = null;
     saveJobData(interaction.user.id, data);
-    db.update(players).set({ yen: player.yen + pay }).where(eq(players.discord_id, interaction.user.id)).run();
+    const freshCourier = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+    db.update(players).set({ yen: (freshCourier?.yen || 0) + pay }).where(eq(players.discord_id, interaction.user.id)).run();
     await interaction.editReply(`✅ Previous delivery completed! Earned **${pay} 💰**. You can now take a new one.`);
     return;
   }
@@ -338,7 +340,8 @@ async function bartender(interaction, player) {
       bartenderGames.delete(interaction.user.id);
       col.stop();
       const tip = Math.floor(Math.random() * 100) + 100;
-      db.update(players).set({ yen: player.yen + tip }).where(eq(players.discord_id, interaction.user.id)).run();
+      const btFresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+      db.update(players).set({ yen: (btFresh?.yen || 0) + tip }).where(eq(players.discord_id, interaction.user.id)).run();
       const win = new EmbedBuilder()
         .setTitle('✅ Perfect Serve!')
         .setColor(0x2ECC71)
@@ -445,7 +448,8 @@ async function reel(interaction, player) {
   const weighted = available.flatMap(f => Array(rodLevel + (f.minRod === 0 ? 3 : 1)).fill(f));
   const catch_ = weighted[Math.floor(Math.random() * weighted.length)];
 
-  db.update(players).set({ yen: player.yen + catch_.value }).where(eq(players.discord_id, interaction.user.id)).run();
+  const reelFresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+  db.update(players).set({ yen: (reelFresh?.yen || 0) + catch_.value }).where(eq(players.discord_id, interaction.user.id)).run();
 
   const embed = new EmbedBuilder()
     .setTitle('🎣 Catch!')

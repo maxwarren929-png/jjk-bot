@@ -65,4 +65,24 @@ function claimBounties(killerId, targetId) {
   return { total, count: all.length };
 }
 
-module.exports = { placeBounty, listBounties, claimBounties };
+function cancelBounties(placerId, targetId) {
+  const all = db.select().from(bounties)
+    .where(and(eq(bounties.placed_by_id, placerId), eq(bounties.target_id, targetId)))
+    .all();
+  if (all.length === 0) return { error: 'You have no bounties on that target.' };
+
+  const total = all.reduce((sum, b) => sum + b.amount, 0);
+
+  const txn = sqlite.transaction(() => {
+    const fresh = db.select().from(players).where(eq(players.discord_id, placerId)).get();
+    for (const b of all) {
+      db.delete(bounties).where(eq(bounties.id, b.id)).run();
+    }
+    db.update(players).set({ yen: fresh.yen + total }).where(eq(players.discord_id, placerId)).run();
+  });
+  txn();
+
+  return { ok: true, total, count: all.length };
+}
+
+module.exports = { placeBounty, listBounties, claimBounties, cancelBounties };

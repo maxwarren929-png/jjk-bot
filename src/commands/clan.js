@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { db } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
-const { createClan, inviteToClan, joinClan, leaveClan, getClanByName, getMembership, getMembers, getClan, transferLeadership, kickFromClan } = require('../systems/clans');
+const { createClan, inviteToClan, joinClan, leaveClan, getClanByName, getMembership, getMembers, getClan, transferLeadership, kickFromClan, renameClan } = require('../systems/clans');
 
 const PASSIVE_DESC = {
   CE_REGEN:        '+10% CE regeneration per tick',
@@ -27,7 +27,9 @@ module.exports = {
     .addSubcommand(sub => sub.setName('transfer').setDescription('Transfer clan leadership to another member')
       .addUserOption(o => o.setName('user').setDescription('New leader').setRequired(true)))
     .addSubcommand(sub => sub.setName('kick').setDescription('Kick a member from your clan (leader only)')
-      .addUserOption(o => o.setName('user').setDescription('Member to kick').setRequired(true))),
+      .addUserOption(o => o.setName('user').setDescription('Member to kick').setRequired(true)))
+    .addSubcommand(sub => sub.setName('rename').setDescription('Rename your clan (leader only)')
+      .addStringOption(o => o.setName('name').setDescription('New clan name').setRequired(true))),
 
   async execute(interaction) {
     await interaction.deferReply();
@@ -100,6 +102,11 @@ module.exports = {
       const result = kickFromClan(player, target.id);
       if (result.error) { await interaction.editReply(`❌ ${result.error}`); return; }
       await interaction.editReply(`✅ Kicked **${target.username}** from the clan.`);
+    } else if (sub === 'rename') {
+      const newName = interaction.options.getString('name').trim();
+      const result = renameClan(player, newName);
+      if (result.error) { await interaction.editReply(`❌ ${result.error}`); return; }
+      await interaction.editReply(`✅ Renamed **${result.oldName}** → **${result.newName}**.`);
     }
   },
 };

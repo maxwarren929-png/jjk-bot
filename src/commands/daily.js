@@ -55,6 +55,7 @@ module.exports = {
       daily_streak: streak,
     }).where(eq(players.discord_id, discordId)).run();
 
+    const nextDaily = now + DAY_MS;
     const embed = new EmbedBuilder()
       .setTitle('📅 Daily Reward')
       .setColor(0xF1C40F)
@@ -63,7 +64,8 @@ module.exports = {
         { name: '🔥 Streak', value: `${streak} day${streak > 1 ? 's' : ''}`, inline: true },
         { name: '❤️ HP Restored', value: `+${hpRestore}`, inline: true },
         { name: '💜 CE Restored', value: `+${ceRestore}`, inline: true },
-      );
+      )
+      .setFooter({ text: `Next daily: ${new Date(nextDaily).toLocaleString()}` });
 
     await interaction.editReply({ embeds: [embed] });
   },

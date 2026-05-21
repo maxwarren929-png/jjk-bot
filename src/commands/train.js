@@ -66,11 +66,15 @@ module.exports = {
 
       if (player.training_until && player.training_until > Date.now()) {
         const remain = Math.ceil((player.training_until - Date.now()) / 60000);
+        const elapsedPct = 1 - (player.training_until - Date.now()) / (2 * 60 * 60 * 1000);
+        const barFilled = Math.round(Math.max(0, Math.min(1, elapsedPct)) * 10);
+        const progressBar = '🟪'.repeat(barFilled) + '⬛'.repeat(10 - barFilled);
         const embed = new EmbedBuilder()
           .setTitle('🏋️ Training Status')
           .setColor(0x3498DB)
           .addFields(
             { name: 'Regimen', value: player.training_type, inline: true },
+            { name: 'Progress', value: progressBar, inline: false },
             { name: 'Remaining', value: `**${remain}m**`, inline: true },
             { name: 'Reward', value: TRAINING_REWARD_TEXT[player.training_type] || 'Unknown', inline: false },
           );

@@ -40,7 +40,7 @@ module.exports = {
                + '`/bank` — Deposit/withdraw/upgrade bank\n'
                + '`/bankrob start/join/launch` — Group bank heist\n'
                + '`/pay <user> <amount>` — Send yen\n'
-               + '`/bounty place/list` — Place or view bounties\n'
+               + '`/bounty place/list/cancel` — Place, view, or cancel bounties (refund)\n'
                + '`/gamble coinflip/dice/blackjack` — Test your luck',
           inline: false,
         },
@@ -52,7 +52,7 @@ module.exports = {
         },
         {
           name: '⚔️ Clans',
-          value: '`/clan create/invite/join/info/leave/transfer/kick` — Clan management',
+          value: '`/clan create/invite/join/info/leave/transfer/kick/rename` — Clan management',
           inline: false,
         },
         {
