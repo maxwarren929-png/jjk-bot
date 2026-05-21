@@ -54,7 +54,7 @@ module.exports = {
         components: [confirm],
       });
 
-      const col = msg.createMessageComponentCollector({ filter: i => i.user.id === interaction.user.id, time: 30_000, max: 1 });
+      const col = msg.createMessageComponentCollector({ filter: i => i.user.id === interaction.user.id && i.member?.permissions?.has('Administrator'), time: 30_000, max: 1 });
       col.on('collect', async btn => {
         await btn.deferUpdate();
         if (btn.customId === 'reset_cancel') {

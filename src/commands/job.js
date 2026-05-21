@@ -294,7 +294,8 @@ async function bartender(interaction, player) {
   if (bartenderGames.has(interaction.user.id)) return interaction.editReply('❌ You already have an active order. Finish it first.');
 
   const drink = DRINKS[Math.floor(Math.random() * DRINKS.length)];
-  const allIngredients = [...new Set([...drink.ingredients, ...DECOY_INGREDIENTS.sort(() => Math.random() - 0.5).slice(0, 6)])];
+  const decoys = [...DECOY_INGREDIENTS].sort(() => Math.random() - 0.5).slice(0, 6);
+  const allIngredients = [...new Set([...drink.ingredients, ...decoys])];
   const shuffled = [...allIngredients].sort(() => Math.random() - 0.5);
 
   const game = { drink, expected: drink.ingredients, clicked: [], ingredients: shuffled };

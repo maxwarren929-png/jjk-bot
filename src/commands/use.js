@@ -78,56 +78,53 @@ module.exports = {
       bossRedirect = true;
     }
 
-    const result = applyTechnique(actor, finalTarget, techniqueId, interaction, bossRedirect);
+    // Check for consumable items before technique (consumed atomically inside combat transaction)
+    const fActorPre = db.select().from(players).where(eq(players.discord_id, discordId)).get();
+    const preJob = (() => { try { return JSON.parse(fActorPre?.job_data || '{}'); } catch { return {}; } })();
+    const preInv = preJob.__items || [];
+    const itemEffects = {
+      bonusDamage: preInv.includes('BONUS_DAMAGE_20'),
+      silenceTarget: preInv.includes('SILENCE_NEXT'),
+    };
+
+    const result = applyTechnique(actor, finalTarget, techniqueId, interaction, bossRedirect, itemEffects);
     if (result.error) {
       await interaction.editReply(`❌ ${result.error}`);
       return;
     }
 
-    // Consumable item effects from job_data.__items (consume only after technique succeeds)
     let itemBonusDmg = 0;
     let silencedTarget = false;
-
-    sqlite.transaction(() => {
-      const fActor = db.select().from(players).where(eq(players.discord_id, discordId)).get();
-      const fTarget = db.select().from(players).where(eq(players.discord_id, targetUser.id)).get();
-      if (!fActor) return;
-      const job = (() => { try { return JSON.parse(fActor.job_data || '{}'); } catch { return {}; } })();
-      const inv = job.__items || [];
-      let modified = false;
-
-      if (inv.includes('BONUS_DAMAGE_20')) {
-        itemBonusDmg = 20;
-        const idx = inv.indexOf('BONUS_DAMAGE_20');
-        inv.splice(idx, 1);
-        job.__items = inv;
-        modified = true;
-      }
-      if (inv.includes('SILENCE_NEXT')) {
-        const idx = inv.indexOf('SILENCE_NEXT');
-        inv.splice(idx, 1);
-        job.__items = inv;
-        db.update(players).set({ job_data: JSON.stringify(job) }).where(eq(players.discord_id, discordId)).run();
-        silencedTarget = true;
-        modified = false; // already written above
-      }
-      if (modified) {
-        db.update(players).set({ job_data: JSON.stringify(job) }).where(eq(players.discord_id, discordId)).run();
-      }
-      if (silencedTarget && fTarget) {
-        const targetData = (() => { try { return JSON.parse(fTarget.job_data || '{}'); } catch { return {}; } })();
-        if (!targetData.__statuses) targetData.__statuses = {};
-        targetData.__statuses.silenced_until = Date.now() + 3600_000;
-        db.update(players).set({ job_data: JSON.stringify(targetData) }).where(eq(players.discord_id, targetUser.id)).run();
-      }
-    })();
-
+    if (itemEffects.bonusDamage) {
+      itemBonusDmg = 20;
+    }
+    if (itemEffects.silenceTarget) {
+      silencedTarget = true;
+    }
     if (itemBonusDmg > 0 && result.damage > 0) {
       result.damage += itemBonusDmg;
       result.log += ` 🗡️ *Split Soul Katana +${itemBonusDmg} damage*`;
     }
     if (silencedTarget) {
       result.log += ` 🔇 *Target silenced — next attack will fizzle!*`;
+    }
+
+    // Persist last fight info
+    if (result.damage > 0) {
+      sqlite.transaction(() => {
+        const pf = db.select().from(players).where(eq(players.discord_id, discordId)).get();
+        if (!pf) return;
+        const pj = (() => { try { return JSON.parse(pf.job_data || '{}'); } catch { return {}; } })();
+        pj.__last_fight = {
+          target: targetUser?.username || 'unknown',
+          technique: tech?.name || techniqueId,
+          damage: result.damage,
+          won: result.rewards?.winner === discordId,
+          yenEarned: (result.rewards?.yenLoss || 0) + (result.rewards?.yenBonus || 0) + (result.rewards?.bountyTotal || 0),
+          time: Date.now(),
+        };
+        db.update(players).set({ job_data: JSON.stringify(pj) }).where(eq(players.discord_id, discordId)).run();
+      })();
     }
 
     // If boss is active and damage was dealt, redirect to boss

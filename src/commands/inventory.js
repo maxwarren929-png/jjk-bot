@@ -9,6 +9,8 @@ const ITEM_NAMES = {
   SILENCE_NEXT: { name: '🔇 Binding Ring', desc: 'Silences the enemy at the start of your next fight.' },
   BONUS_DAMAGE_20: { name: '🗡️ Split Soul Katana', desc: '+20 flat damage in your next fight.' },
   CE_RESTORE_50: { name: '💜 CE Potion', desc: 'Restores 50 Cursed Energy.' },
+  HP_RESTORE_100: { name: '❤️‍🔥 HP Potion', desc: 'Restores 100 HP.' },
+  CE_RESTORE_30: { name: '💚 CE Elixir', desc: 'Restores 30 Cursed Energy.' },
   EXIT_BROKEN: { name: '🧪 Healing Vial', desc: 'Exit Broken state and restore 50 HP.' },
 };
 
@@ -19,6 +21,8 @@ function getSellPrice(effectKey) {
 
 const USEABLE_ITEMS = {
   CE_RESTORE_50: { name: '💜 CE Potion', desc: 'Restore 50 CE' },
+  HP_RESTORE_100: { name: '❤️‍🔥 HP Potion', desc: 'Restore 100 HP' },
+  CE_RESTORE_30: { name: '💚 CE Elixir', desc: 'Restore 30 CE' },
   EXIT_BROKEN: { name: '🧪 Healing Vial', desc: 'Exit Broken state and restore 50 HP' },
 };
 
@@ -26,6 +30,8 @@ const SELLABLE_ITEMS = [
   { name: '🔇 Binding Ring', value: 'SILENCE_NEXT' },
   { name: '🗡️ Split Soul Katana', value: 'BONUS_DAMAGE_20' },
   { name: '💜 CE Potion', value: 'CE_RESTORE_50' },
+  { name: '❤️‍🔥 HP Potion', value: 'HP_RESTORE_100' },
+  { name: '💚 CE Elixir', value: 'CE_RESTORE_30' },
   { name: '🧪 Healing Vial', value: 'EXIT_BROKEN' },
 ];
 
@@ -205,9 +211,17 @@ async function useItem(interaction) {
     freshItems.splice(fIdx, 1);
     freshJob.__items = freshItems;
 
-    if (itemKey === 'CE_RESTORE_50') {
+    if (itemKey === 'CE_RESTORE_50' || itemKey === 'CE_RESTORE_30') {
       if (fresh.ce >= fresh.max_ce) {
-        skipped = 'Your CE is already full. Save the potion for later.';
+        skipped = 'Your CE is already full. Save it for later.';
+        db.update(players).set({ job_data: JSON.stringify(freshJob) }).where(eq(players.discord_id, interaction.user.id)).run();
+        return;
+      }
+    }
+
+    if (itemKey === 'HP_RESTORE_100') {
+      if (fresh.hp >= fresh.max_hp) {
+        skipped = 'Your HP is already full. Save it for later.';
         db.update(players).set({ job_data: JSON.stringify(freshJob) }).where(eq(players.discord_id, interaction.user.id)).run();
         return;
       }
@@ -223,6 +237,8 @@ async function useItem(interaction) {
 
     const update = {};
     if (itemKey === 'CE_RESTORE_50') update.ce = Math.min(fresh.ce + 50, fresh.max_ce);
+    if (itemKey === 'CE_RESTORE_30') update.ce = Math.min(fresh.ce + 30, fresh.max_ce);
+    if (itemKey === 'HP_RESTORE_100') update.hp = Math.min(fresh.hp + 100, fresh.max_hp);
     if (itemKey === 'EXIT_BROKEN') { update.is_broken = false; update.broken_until = null; update.hp = Math.min(fresh.hp + 50, fresh.max_hp); }
     update.job_data = JSON.stringify(freshJob);
     db.update(players).set(update).where(eq(players.discord_id, interaction.user.id)).run();

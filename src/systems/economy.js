@@ -8,6 +8,8 @@ function safeParse(val) {
 
 const SHOP_CATALOG = [
   { id: 'ce_potion',        name: 'CE Potion',              cost: 100,  effect: 'CE_RESTORE_50',   description: 'Stores in inventory. Use `/inventory use` to restore 50 CE.' },
+  { id: 'hp_potion',        name: 'HP Potion',              cost: 200,  effect: 'HP_RESTORE_100',  description: 'Instantly restores 100 HP. Also stores in inventory for later use.' },
+  { id: 'ce_elixir',        name: 'CE Elixir',              cost: 150,  effect: 'CE_RESTORE_30',   description: 'Instantly restores 30 CE. Also stores in inventory for later use.' },
   { id: 'binding_ring',     name: 'Binding Ring',           cost: 200,  effect: 'SILENCE_NEXT',    description: 'Silences the enemy on your next attack, skipping their action.' },
   { id: 'split_soul_katana',name: 'Cursed Tool: Split Soul Katana', cost: 300, effect: 'BONUS_DAMAGE_20', description: '+20 flat damage on all attacks for your next fight.' },
   { id: 'technique_reroll', name: 'Technique Reroll',       cost: 1000, effect: 'REROLL_INNATE',   description: 'Randomly reassign your innate technique. All variants are lost.' },
@@ -36,6 +38,8 @@ function applyShopEffect(player, itemId) {
 
       switch (item.effect) {
         case 'CE_RESTORE_50':
+        case 'HP_RESTORE_100':
+        case 'CE_RESTORE_30':
         case 'EXIT_BROKEN':
         case 'SILENCE_NEXT':
         case 'BONUS_DAMAGE_20': {
@@ -43,6 +47,12 @@ function applyShopEffect(player, itemId) {
           if (!job.__items) job.__items = [];
           if (!job.__items.includes(item.effect)) job.__items.push(item.effect);
           update.job_data = JSON.stringify(job);
+          if (item.effect === 'HP_RESTORE_100') {
+            update.hp = Math.min((fresh.hp || 0) + 100, fresh.max_hp);
+          }
+          if (item.effect === 'CE_RESTORE_30') {
+            update.ce = Math.min((fresh.ce || 0) + 30, fresh.max_ce);
+          }
           break;
         }
         case 'REROLL_INNATE': {
@@ -105,7 +115,7 @@ function transferYen(fromId, toId, amount) {
   return result || { error: 'Transaction failed. Try again.' };
 }
 
-const CONSUMABLE_EFFECTS = ['CE_RESTORE_50', 'SILENCE_NEXT', 'BONUS_DAMAGE_20', 'EXIT_BROKEN'];
+const CONSUMABLE_EFFECTS = ['CE_RESTORE_50', 'HP_RESTORE_100', 'CE_RESTORE_30', 'SILENCE_NEXT', 'BONUS_DAMAGE_20', 'EXIT_BROKEN'];
 
 function sellItem(player, effectKey) {
   const item = SHOP_CATALOG.find(i => i.effect === effectKey);

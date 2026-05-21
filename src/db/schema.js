@@ -57,6 +57,7 @@ const clans = sqliteTable('clans', {
   member_limit: integer('member_limit').notNull().default(20),
   invite_only: integer('invite_only', { mode: 'boolean' }).notNull().default(false),
   description: text('description').notNull().default(''),
+  clan_balance: integer('clan_balance').notNull().default(0),
   created_at: integer('created_at').notNull().$defaultFn(() => Date.now()),
 });
 

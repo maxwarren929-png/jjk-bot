@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { db } = require('../db/index');
 const { players } = require('../db/schema');
+const { desc, sql } = require('drizzle-orm');
 
 const GRADE_ORDER = ['Grade 4', 'Grade 3', 'Grade 2', 'Grade 1', 'Semi-Special Grade', 'Special Grade'];
 
@@ -23,10 +24,7 @@ module.exports = {
     await interaction.deferReply();
     const type = interaction.options.getString('type') || 'wealth';
 
-    const all = db.select().from(players).all();
-    if (!all.length) return interaction.editReply('❌ No players yet.');
-
-    let ranked;
+    let all;
     let title;
     let color;
     let formatRow;
@@ -34,37 +32,37 @@ module.exports = {
     if (type === 'wins') {
       title = '🏆 Fight Wins Leaderboard';
       color = 0xE74C3C;
-      ranked = all
-        .map(p => ({ id: p.discord_id, name: p.username, wins: p.fight_wins || 0 }))
-        .sort((a, b) => b.wins - a.wins)
-        .slice(0, 10);
-      formatRow = (r, i) => `${medal(i)} <@${r.id}> — **${r.wins} win${r.wins !== 1 ? 's' : ''}**\n`;
+      all = db.select().from(players).orderBy(desc(players.fight_wins)).limit(10).all();
+      if (!all.length) return interaction.editReply('❌ No players yet.');
+      formatRow = (r, i) => `${medal(i)} <@${r.discord_id}> — **${r.fight_wins || 0} win${(r.fight_wins || 0) !== 1 ? 's' : ''}**\n`;
     } else if (type === 'grade') {
       title = '🏅 Grade Leaderboard';
       color = 0x9B59B6;
-      ranked = all
-        .map(p => ({ id: p.discord_id, name: p.username, grade: p.grade, gradeIdx: GRADE_ORDER.indexOf(p.grade), wins: p.fight_wins || 0 }))
+      all = db.select().from(players).all();
+      if (!all.length) return interaction.editReply('❌ No players yet.');
+      const ranked = all
+        .map(p => ({ id: p.discord_id, grade: p.grade, gradeIdx: GRADE_ORDER.indexOf(p.grade), wins: p.fight_wins || 0 }))
         .sort((a, b) => b.gradeIdx - a.gradeIdx || b.wins - a.wins)
         .slice(0, 10);
       formatRow = (r, i) => `${medal(i)} <@${r.id}> — **${r.grade}** (${r.wins} win${r.wins !== 1 ? 's' : ''})\n`;
+      all = ranked;
     } else if (type === 'bounty') {
       title = '☠️ Bounty Hunter Leaderboard';
       color = 0x2C3E50;
-      ranked = all
-        .map(p => ({ id: p.discord_id, name: p.username, kills: p.bounty_kills || 0 }))
-        .sort((a, b) => b.kills - a.kills)
-        .slice(0, 10)
-        .filter(r => r.kills > 0);
-      if (ranked.length === 0) return interaction.editReply('❌ No bounty kills yet.');
-      formatRow = (r, i) => `${medal(i)} <@${r.id}> — **${r.kills}** bounty kill${r.kills !== 1 ? 's' : ''}\n`;
+      all = db.select().from(players).orderBy(desc(players.bounty_kills)).limit(10).all().filter(r => r.bounty_kills > 0);
+      if (!all.length) return interaction.editReply('❌ No bounty kills yet.');
+      formatRow = (r, i) => `${medal(i)} <@${r.discord_id}> — **${r.bounty_kills || 0}** bounty kill${(r.bounty_kills || 0) !== 1 ? 's' : ''}\n`;
     } else {
       title = '💰 Wealth Leaderboard';
       color = 0xF1C40F;
-      ranked = all
-        .map(p => ({ id: p.discord_id, name: p.username, total: p.yen + (p.bank_balance || 0), wallet: p.yen, bank: p.bank_balance || 0 }))
-        .sort((a, b) => b.total - a.total)
-        .slice(0, 10);
-      formatRow = (r, i) => `${medal(i)} <@${r.id}> — **${r.total.toLocaleString()} 💰** (👛 ${r.wallet.toLocaleString()} / 🏦 ${r.bank.toLocaleString()})\n`;
+      all = db.select({
+        discord_id: players.discord_id,
+        yen: players.yen,
+        bank_balance: players.bank_balance,
+        total: sql`${players.yen} + ${players.bank_balance}`,
+      }).from(players).orderBy(desc(sql`${players.yen} + ${players.bank_balance}`)).limit(10).all();
+      if (!all.length) return interaction.editReply('❌ No players yet.');
+      formatRow = (r, i) => `${medal(i)} <@${r.discord_id}> — **${r.total.toLocaleString()} 💰** (👛 ${r.yen.toLocaleString()} / 🏦 ${(r.bank_balance || 0).toLocaleString()})\n`;
     }
 
     function medal(i) {
@@ -76,8 +74,8 @@ module.exports = {
       .setColor(color);
 
     let desc = '';
-    for (let i = 0; i < ranked.length; i++) {
-      desc += formatRow(ranked[i], i);
+    for (let i = 0; i < all.length; i++) {
+      desc += formatRow(all[i], i);
     }
 
     embed.setDescription(desc);

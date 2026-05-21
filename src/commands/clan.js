@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 const { db } = require('../db/index');
 const { players, clans: clansTable, clan_members } = require('../db/schema');
 const { eq } = require('drizzle-orm');
-const { createClan, inviteToClan, joinClan, leaveClan, getClanByName, getMembership, getMembers, getClan, transferLeadership, kickFromClan, renameClan, disbandClan, getPendingInvites, setPassive, setInviteOnly, setDescription, PASSIVE_OPTIONS, PASSIVE_COST } = require('../systems/clans');
+const { createClan, inviteToClan, joinClan, leaveClan, getClanByName, getMembership, getMembers, getClan, transferLeadership, kickFromClan, renameClan, disbandClan, getPendingInvites, setPassive, setInviteOnly, setDescription, getClanBalance, depositClanBank, withdrawClanBank, PASSIVE_OPTIONS, PASSIVE_COST } = require('../systems/clans');
 
 const PASSIVE_DESC = {
   CE_REGEN:        '+10% CE regeneration per tick',
@@ -46,6 +46,11 @@ module.exports = {
       .addBooleanOption(o => o.setName('enabled').setDescription('Invite-only on or off').setRequired(true)))
     .addSubcommand(sub => sub.setName('setdescription').setDescription('Set your clan description (leader only, max 200 chars).')
       .addStringOption(o => o.setName('text').setDescription('New description').setRequired(true)))
+    .addSubcommand(sub => sub.setName('deposit').setDescription('Deposit yen into your clan bank.')
+      .addIntegerOption(o => o.setName('amount').setDescription('Amount to deposit').setRequired(true).setMinValue(1)))
+    .addSubcommand(sub => sub.setName('withdraw').setDescription('Withdraw yen from the clan bank (leader only).')
+      .addIntegerOption(o => o.setName('amount').setDescription('Amount to withdraw').setRequired(true).setMinValue(1)))
+    .addSubcommand(sub => sub.setName('balance').setDescription('View your clan bank balance.'))
     .addSubcommand(sub => sub.setName('list').setDescription('Browse all clans.'))
     .addSubcommand(sub => sub.setName('top').setDescription('View the clan leaderboard ranked by total member wealth.')),
 
@@ -131,11 +136,11 @@ module.exports = {
         new ButtonBuilder().setCustomId('leave_confirm').setLabel(`✅ Leave ${clanName}`).setStyle(ButtonStyle.Danger),
         new ButtonBuilder().setCustomId('leave_cancel').setLabel('Cancel').setStyle(ButtonStyle.Secondary),
       );
-      await interaction.editReply({
+      const leaveMsg = await interaction.editReply({
         content: `Are you sure you want to leave **${clanName}**?`,
         components: [confirmRow],
       });
-      const col = interaction.channel.createMessageComponentCollector({ filter: i => i.user.id === interaction.user.id, time: 30_000, max: 1 });
+      const col = leaveMsg.createMessageComponentCollector({ filter: i => i.user.id === interaction.user.id, time: 30_000, max: 1 });
       col.on('collect', async btn => {
         await btn.deferUpdate();
         if (btn.customId === 'leave_cancel') {
@@ -217,6 +222,38 @@ module.exports = {
       col.on('end', (_, reason) => {
         if (reason === 'time') interaction.editReply({ components: [] }).catch(() => {});
       });
+    } else if (sub === 'deposit') {
+      const amount = interaction.options.getInteger('amount');
+      const result = depositClanBank(player, amount);
+      if (result.error) { await interaction.editReply(`❌ ${result.error}`); return; }
+      const membership = getMembership(discordId);
+      const clan = getClan(membership.clan_id);
+      const newBalance = getClanBalance(clan.id);
+      await interaction.editReply(`✅ Deposited **${result.amount} 💰** into **${clan.name}**'s bank. Clan balance: **${newBalance} 💰**.`);
+
+    } else if (sub === 'withdraw') {
+      const amount = interaction.options.getInteger('amount');
+      const result = withdrawClanBank(player, amount);
+      if (result.error) { await interaction.editReply(`❌ ${result.error}`); return; }
+      const membership = getMembership(discordId);
+      const clan = getClan(membership.clan_id);
+      const newBalance = getClanBalance(clan.id);
+      await interaction.editReply(`✅ Withdrew **${result.amount} 💰** from **${clan.name}**'s bank. Clan balance: **${newBalance} 💰**.`);
+
+    } else if (sub === 'balance') {
+      const membership = getMembership(discordId);
+      if (!membership) { await interaction.editReply('❌ You are not in a clan.'); return; }
+      const clan = getClan(membership.clan_id);
+      const balance = getClanBalance(clan.id);
+      const embed = new EmbedBuilder()
+        .setTitle(`🏦 ${clan.name} — Bank Balance`)
+        .setColor(0xF1C40F)
+        .addFields(
+          { name: '💰 Total Balance', value: `${balance.toLocaleString()} 💰`, inline: true },
+          { name: 'Members', value: `${getMembers(clan.id).length}`, inline: true },
+        );
+      await interaction.editReply({ embeds: [embed] });
+
     } else if (sub === 'list') {
       const allClans = db.select().from(clansTable).all();
       if (!allClans.length) {
@@ -232,10 +269,11 @@ module.exports = {
         return `${lock} **${c.name}** — ${count} member${count !== 1 ? 's' : ''} — ${passive}`;
       });
 
+      const desc = rows.join('\n');
       const embed = new EmbedBuilder()
         .setTitle('⚔️ All Clans')
         .setColor(0x3498DB)
-        .setDescription(rows.join('\n'));
+        .setDescription(desc.length > 4000 ? desc.slice(0, 3997) + '...' : desc);
 
       await interaction.editReply({ embeds: [embed] });
     } else if (sub === 'top') {

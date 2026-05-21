@@ -1,6 +1,6 @@
 const { db, sqlite } = require('../db/index');
 const { clans, clan_members, clan_invites, players } = require('../db/schema');
-const { eq, and } = require('drizzle-orm');
+const { eq, and, sql } = require('drizzle-orm');
 
 const CLAN_COST = 500;
 const PASSIVE_COST = 2000;
@@ -242,4 +242,38 @@ function setDescription(leader, description) {
   return { ok: true, name: clan.name, description };
 }
 
-module.exports = { getClan, getClanByName, getMembership, getMembers, createClan, inviteToClan, joinClan, leaveClan, transferLeadership, kickFromClan, renameClan, disbandClan, getPlayerClanBonus, getPendingInvites, setPassive, setInviteOnly, setDescription, PASSIVE_OPTIONS, PASSIVE_COST };
+function getClanBalance(clanId) {
+  const clan = getClan(clanId);
+  return clan ? clan.clan_balance || 0 : 0;
+}
+
+function depositClanBank(member, amount) {
+  const membership = getMembership(member.discord_id);
+  if (!membership) return { error: 'You are not in a clan.' };
+  if (amount < 1) return { error: 'Amount must be at least 1 💰.' };
+  if (member.yen < amount) return { error: `You don't have enough yen. You have **${member.yen} 💰**.` };
+  return sqlite.transaction(() => {
+    const fresh = db.select().from(players).where(eq(players.discord_id, member.discord_id)).get();
+    if (!fresh || fresh.yen < amount) return { error: 'Insufficient yen.' };
+    db.update(players).set({ yen: fresh.yen - amount }).where(eq(players.discord_id, member.discord_id)).run();
+    db.update(clans).set({ clan_balance: sql`clan_balance + ${amount}` }).where(eq(clans.id, membership.clan_id)).run();
+    return { ok: true, amount };
+  })();
+}
+
+function withdrawClanBank(leader, amount) {
+  const membership = getMembership(leader.discord_id);
+  if (!membership || membership.role !== 'Leader') return { error: 'Only the clan leader can withdraw from the clan bank.' };
+  if (amount < 1) return { error: 'Amount must be at least 1 💰.' };
+  return sqlite.transaction(() => {
+    const clan = getClan(membership.clan_id);
+    if (!clan) return { error: 'Clan not found.' };
+    const balance = clan.clan_balance || 0;
+    if (balance < amount) return { error: `Clan bank only has **${balance} 💰**.` };
+    db.update(clans).set({ clan_balance: balance - amount }).where(eq(clans.id, clan.id)).run();
+    db.update(players).set({ yen: sql`yen + ${amount}` }).where(eq(players.discord_id, leader.discord_id)).run();
+    return { ok: true, amount };
+  })();
+}
+
+module.exports = { getClan, getClanByName, getMembership, getMembers, createClan, inviteToClan, joinClan, leaveClan, transferLeadership, kickFromClan, renameClan, disbandClan, getPlayerClanBonus, getPendingInvites, setPassive, setInviteOnly, setDescription, getClanBalance, depositClanBank, withdrawClanBank, PASSIVE_OPTIONS, PASSIVE_COST };

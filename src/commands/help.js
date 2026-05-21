@@ -18,13 +18,14 @@ module.exports = {
         {
           name: '👤 Profile & Progression',
           value: '`/profile` — View or create your sorcerer profile\n'
-               + '`/techniques` — View your techniques\n'
+               + '`/techniques` — View your techniques with mastery\n'
+               + '`/lastfight` — View your most recent combat result\n'
                + '`/cooldowns` — View all active cooldowns\n'
-                + '`/train start <type>` — Begin a 2-hour training session\n'
-                + '`/train status` — Check training progress\n'
-                + '`/train cancel` — Cancel current training (no refund)\n'
-                + '`/reset` — Permanently delete your profile and start over\n'
-                 + '`/leaderboard` — Top players by wealth, wins, grade, or bounty kills\n'
+               + '`/train start <type>` — Begin a 2-hour training session\n'
+               + '`/train status` — Check training progress\n'
+               + '`/train cancel` — Cancel current training (no refund)\n'
+               + '`/reset` — Permanently delete your profile and start over\n'
+               + '`/leaderboard` — Top players by wealth, wins, grade, or bounty kills\n'
                + '`/rankup` — Check grade progression requirements',
           inline: false,
         },
@@ -37,30 +38,35 @@ module.exports = {
         },
         {
           name: '🏦 Economy',
-           value: '`/daily claim` — Claim daily reward (streak bonus)\n'
-                  + '`/daily info` — Check daily streak and next claim\n'
-                 + '`/shop` — Browse and buy items\n'
-                 + '`/bank balance/deposit/withdraw/upgrade` — Manage your cursed bank account\n'
+          value: '`/daily claim` — Claim daily reward (streak bonus)\n'
+               + '`/daily info` — Check daily streak and next claim\n'
+               + '`/shop` — Browse and buy items\n'
+               + '`/buy <item> [quantity]` — Quick-buy with bulk support\n'
+               + '`/stats` — Server-wide statistics\n'
+               + '`/bank balance/deposit/withdraw/upgrade` — Manage your cursed bank account\n'
                + '`/bankrob start/join/launch` — Group bank heist\n'
                + '`/pay <user> <amount>` — Send yen\n'
-                 + '`/bounty place/list/cancel/check/top/placed` — Place, view, cancel, or top bounties\n'
+               + '`/bounty place/list/cancel/check/top/placed` — Place, view, cancel, or top bounties\n'
                + '`/gamble coinflip/dice/blackjack` — Test your luck',
           inline: false,
         },
         {
           name: '💼 Jobs',
           value: '`/job apply/quit/info` — Manage your job\n'
-                + '`/job courier/bartender/chop/fish/reel/mine/ores/sell/smelt` — Job actions',
+               + '`/job courier/bartender/chop/fish/reel/mine/ores/sell/smelt` — Job actions',
           inline: false,
         },
-          {
-            name: '⚔️ Clans',
-            value: '`/clan create/invite/join/info/leave/transfer/kick/rename/disband/invites/members/setpassive/setinviteonly/setdescription` — Clan management',
-            inline: false,
-          },
+        {
+          name: '⚔️ Clans',
+          value: '`/clan create/invite/join/info/leave/transfer/kick/rename/disband/invites/members` — Management\n'
+               + '`/clan setpassive/setinviteonly/setdescription` — Leader settings\n'
+               + '`/clan deposit/withdraw/balance` — Clan bank (withdraw leader only)',
+          inline: false,
+        },
         {
           name: '📦 Inventory',
-           value: '`/inventory view/use/sell/give` — Manage and gift your items',
+          value: '`/inventory view/use/sell/give` — Manage and gift your items\n'
+               + 'New: **HP Potion**, **CE Elixir** — heal HP/CE instantly or store for later',
           inline: false,
         },
       );

@@ -35,6 +35,8 @@ module.exports = {
     }
 
     const { innate, unlocked } = getPlayerTechniques(player);
+    const jobData = (() => { try { return JSON.parse(player.job_data || '{}'); } catch { return {}; } })();
+    const mastery = jobData.__mastery || {};
 
     if (!innate) {
       const embed = new EmbedBuilder()
@@ -65,7 +67,10 @@ module.exports = {
       const variantLines = unlocked.filter(t => t.id !== 'punch').map(t => {
         const cdStatus = formatCooldown(t.id, player.discord_id);
         const confiscated = lockedTechs.includes(t.id) ? ' 🔒 **Confiscated**' : '';
-        return `**${t.name}** — ${t.ce_cost} CE — ${cdStatus}${confiscated}\n└ ${t.description}`;
+        const mCount = mastery[t.id] || 0;
+        const mBonus = mCount >= 20 ? 20 : mCount >= 15 ? 15 : mCount >= 10 ? 10 : mCount >= 5 ? 5 : 0;
+        const mStr = mBonus > 0 ? ` 🌟 Mastery +${mBonus}%` : '';
+        return `**${t.name}** — ${t.ce_cost} CE — ${cdStatus}${confiscated}${mStr}\n└ ${t.description}`;
       });
       if (variantLines.length > 0) {
         embed.addFields({ name: '🎯 Unlocked Variants', value: variantLines.join('\n\n'), inline: false });

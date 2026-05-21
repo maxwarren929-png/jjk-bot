@@ -26,6 +26,7 @@ module.exports = {
     });
 
     const col = interaction.channel.createMessageComponentCollector({ filter: i => i.user.id === interaction.user.id, time: 30_000, max: 1 });
+    // Ephemeral reply; only the invoking user sees these buttons
     col.on('collect', async btn => {
       await btn.deferUpdate();
       if (btn.customId === 'reset_cancel') {

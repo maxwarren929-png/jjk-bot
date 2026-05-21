@@ -17,7 +17,7 @@ module.exports = {
     const ping = client.ws.ping;
     const uptimeSec = process.uptime();
     let gitInfo = '';
-    try { gitInfo = require('child_process').execSync('git log --oneline -1', { cwd: __dirname, encoding: 'utf8' }).trim().split(' ')[0]; } catch {}
+    try { gitInfo = require('child_process').execFileSync('git', ['log', '--oneline', '-1'], { cwd: __dirname, encoding: 'utf8', timeout: 3000 }).trim().split(' ')[0]; } catch {}
     const uptimeStr = uptimeSec >= 86400 ? `${Math.floor(uptimeSec / 86400)}d ${Math.floor((uptimeSec % 86400) / 3600)}h` :
       uptimeSec >= 3600 ? `${Math.floor(uptimeSec / 3600)}h ${Math.floor((uptimeSec % 3600) / 60)}m` :
       `${Math.floor(uptimeSec / 60)}m ${Math.floor(uptimeSec % 60)}s`;

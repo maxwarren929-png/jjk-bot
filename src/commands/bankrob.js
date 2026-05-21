@@ -15,12 +15,15 @@ const STEAL_PCT = 0.3;
 const FAIL_FINE_PCT = 0.1;
 const FAIL_FINE_MIN = 50;
 
+const { randomBytes } = require('crypto');
+
 function genId() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let id;
   do {
+    const bytes = randomBytes(4);
     id = '';
-    for (let i = 0; i < 4; i++) id += chars[Math.floor(Math.random() * chars.length)];
+    for (let i = 0; i < 4; i++) id += chars[bytes[i] % chars.length];
   } while (heists.has(id));
   return id;
 }

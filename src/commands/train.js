@@ -103,12 +103,7 @@ module.exports = {
 
     const type = interaction.options.getString('type');
 
-    // Check if previous training is done
     const completed = completeTraining(player);
-    if (completed) {
-      // player refetched below
-    }
-
     const fresh = db.select().from(players).where(eq(players.discord_id, discordId)).get();
     const result = startTraining(fresh, type);
     if (result.error) {
@@ -122,6 +117,7 @@ module.exports = {
       .setDescription(TRAINING_LORE[type])
       .addFields(
         { name: 'Regimen', value: type, inline: true },
+        ...(completed ? [{ name: '✅ Previous Training Complete', value: `${completed.type} — ${completed.reward ? Object.entries(completed.reward).filter(([k]) => k !== '_isolation').map(([k, v]) => `${k}: ${v}`).join(', ') : 'No rewards'}`, inline: false }] : []),
         { name: 'Reward', value: TRAINING_REWARD_TEXT[type], inline: false },
         { name: 'Completes', value: `<t:${Math.floor(result.until / 1000)}:R>`, inline: true },
       )

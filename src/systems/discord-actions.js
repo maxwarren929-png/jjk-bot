@@ -203,7 +203,9 @@ async function executeDiscordAction(action, ctx) {
 
       case 'boss_spawn': {
         const { spawnMahoraga } = require('./mahoraga-boss');
-        return await spawnMahoraga(actor, target, ch?.id);
+        const actorId = typeof actor === 'string' ? actor : (actor?.discord_id || actor?.id);
+        const targetId = typeof target === 'string' ? target : (target?.discord_id || target?.id);
+        return await spawnMahoraga(actorId, targetId, ch?.id);
       }
 
       case 'technique_lock': {

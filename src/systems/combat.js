@@ -37,7 +37,7 @@ function rollBlackFlash() {
   return Math.random() < 0.05;
 }
 
-function applyTechnique(actor, target, techniqueId, interaction = null, skipTargetDamage = false) {
+function applyTechnique(actor, target, techniqueId, interaction = null, skipTargetDamage = false, itemEffects = null) {
   const tech = getTechniqueById(techniqueId);
   if (!tech) return { error: 'Unknown technique.' };
 
@@ -54,6 +54,16 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
     const secs = Math.ceil((userCDs[techniqueId] - now) / 1000);
     return { error: `${tech.name} is on cooldown for ${secs}s.` };
   }
+
+  // Technique mastery tracking
+  const masteryData = (() => {
+    try {
+      const jd = JSON.parse(actor.job_data || '{}');
+      return jd.__mastery || {};
+    } catch { return {}; }
+  })();
+  const masteryCount = masteryData[techniqueId] || 0;
+  const masteryBonus = masteryCount >= 20 ? 20 : masteryCount >= 15 ? 15 : masteryCount >= 10 ? 10 : masteryCount >= 5 ? 5 : 0;
 
   // Build in-memory combat snapshots (don't persist, just for effect resolution)
   const actorState = {
@@ -140,6 +150,13 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
       logLine += ` ⚔️ *Clan damage boost +${boostDmg}!* `;
     }
 
+    // Technique mastery bonus
+    if (masteryBonus > 0) {
+      const masteryDmg = Math.floor(damage * masteryBonus / 100);
+      damage += masteryDmg;
+      logLine += ` 🌟 *Mastery +${masteryDmg}!* `;
+    }
+
     // Black Flash
     if (rollBlackFlash()) {
       damage = Math.floor(damage * 1.5);
@@ -199,11 +216,33 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
   sqlite.transaction(() => {
     const freshActor = db.select().from(players).where(eq(players.discord_id, actor.discord_id)).get();
     const freshTarget = db.select().from(players).where(eq(players.discord_id, target.discord_id)).get();
+    const targetClanBonus = freshTarget ? getPlayerClanBonus(target.discord_id) : null;
     if (freshActor) {
+      if (itemEffects) {
+        const job = (() => { try { return JSON.parse(freshActor.job_data || '{}'); } catch { return {}; } })();
+        const inv = job.__items || [];
+        if (itemEffects.bonusDamage && inv.includes('BONUS_DAMAGE_20')) {
+          const idx = inv.indexOf('BONUS_DAMAGE_20');
+          inv.splice(idx, 1);
+          job.__items = inv;
+          db.update(players).set({ job_data: JSON.stringify(job) }).where(eq(players.discord_id, actor.discord_id)).run();
+        }
+        if (itemEffects.silenceTarget && inv.includes('SILENCE_NEXT')) {
+          const idx = inv.indexOf('SILENCE_NEXT');
+          inv.splice(idx, 1);
+          job.__items = inv;
+          if (freshTarget) {
+            const targetData = (() => { try { return JSON.parse(freshTarget.job_data || '{}'); } catch { return {}; } })();
+            if (!targetData.__statuses) targetData.__statuses = {};
+            targetData.__statuses.silenced_until = Date.now() + 3600_000;
+            db.update(players).set({ job_data: JSON.stringify(job) }).where(eq(players.discord_id, actor.discord_id)).run();
+            db.update(players).set({ job_data: JSON.stringify(targetData) }).where(eq(players.discord_id, target.discord_id)).run();
+          }
+        }
+      }
       const setData = { ce: Math.max(0, freshActor.ce - tech.ce_cost) };
       if (rewards && freshTarget) {
         let stolenYen = freshTarget.yen + (freshTarget.bank_balance || 0);
-        const targetClanBonus = getPlayerClanBonus(target.discord_id);
         if (targetClanBonus === 'DEATH_REDUCTION') {
           const saved = Math.floor(stolenYen * 0.1);
           stolenYen -= saved;
@@ -249,8 +288,14 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
         targetSet.is_broken = true;
         targetSet.hp = 0;
         targetSet.broken_until = Date.now() + 24 * 60 * 60 * 1000;
-        targetSet.yen = 0;
-        targetSet.bank_balance = 0;
+        if (targetClanBonus === 'DEATH_REDUCTION') {
+          const savedAmount = Math.floor((freshTarget.yen + (freshTarget.bank_balance || 0)) * 0.1);
+          targetSet.yen = Math.min(savedAmount, freshTarget.yen);
+          targetSet.bank_balance = Math.max(0, savedAmount - targetSet.yen);
+        } else {
+          targetSet.yen = 0;
+          targetSet.bank_balance = 0;
+        }
         if (freshTarget.innate_technique_id) {
           targetSet.innate_technique_id = null;
           targetSet.innate_removed = true;
@@ -258,10 +303,15 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
       }
       db.update(players).set(targetSet).where(eq(players.discord_id, target.discord_id)).run();
     }
+    // Increment technique mastery
+    if (freshActor) {
+      const actorJob = (() => { try { return JSON.parse(freshActor.job_data || '{}'); } catch { return {}; } })();
+      if (!actorJob.__mastery) actorJob.__mastery = {};
+      actorJob.__mastery[techniqueId] = (actorJob.__mastery[techniqueId] || 0) + 1;
+      db.update(players).set({ job_data: JSON.stringify(actorJob) }).where(eq(players.discord_id, actor.discord_id)).run();
+    }
+    userCDs[techniqueId] = now + tech.cooldown_seconds * 1000;
   })();
-
-  // Persist cooldown in memory only after DB write succeeds
-  userCDs[techniqueId] = now + tech.cooldown_seconds * 1000;
 
   // Send death notification DM
   if (rewards && interaction) {

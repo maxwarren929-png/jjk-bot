@@ -14,11 +14,15 @@ const BANK_TIERS = [
 ];
 
 function getTier(bankMax) {
-  return BANK_TIERS.find(t => t.max === bankMax) || BANK_TIERS[BANK_TIERS.length - 1];
+  for (const t of BANK_TIERS) {
+    if (bankMax <= t.max) return t;
+  }
+  return BANK_TIERS[BANK_TIERS.length - 1];
 }
 
 function nextTier(bankMax) {
-  const idx = BANK_TIERS.findIndex(t => t.max === bankMax);
+  const current = getTier(bankMax);
+  const idx = BANK_TIERS.indexOf(current);
   return idx >= 0 && idx < BANK_TIERS.length - 1 ? BANK_TIERS[idx + 1] : null;
 }
 
