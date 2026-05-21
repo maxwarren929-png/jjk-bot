@@ -74,12 +74,12 @@ module.exports = {
           const fActor = db.select().from(players).where(eq(players.discord_id, userId)).get();
           const fTarget = db.select().from(players).where(eq(players.discord_id, targetUser.id)).get();
           if (!fActor || !fTarget) return;
-          failStealAmount = Math.min(Math.floor((fTarget?.yen || 0) * STEAL_PCT), MAX_STEAL);
+          failStealAmount = Math.min(Math.floor(fTarget.yen * STEAL_PCT), MAX_STEAL);
           const fine = Math.max(10, Math.floor(failStealAmount * FAIL_FINE_PCT));
-          actualFine = Math.min(fine, fActor?.yen || 0);
-          db.update(players).set({ yen: (fActor?.yen || 0) - actualFine, last_robbed_at: Date.now() }).where(eq(players.discord_id, userId)).run();
-          newActorYen = (fActor?.yen || 0) - actualFine;
-          newTargetYen = target.yen;
+          actualFine = Math.min(fine, fActor.yen);
+          db.update(players).set({ yen: fActor.yen - actualFine, last_robbed_at: Date.now() }).where(eq(players.discord_id, userId)).run();
+          newActorYen = fActor.yen - actualFine;
+          newTargetYen = fTarget.yen;
         })();
       } catch (err) {
         console.error(`[${new Date().toISOString()}] rob.js: failure txn failed — ${err.message}`);

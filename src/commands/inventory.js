@@ -98,11 +98,18 @@ module.exports = {
     const equipLines = [];
     if (player.job === 'lumberjack') {
       const axeLevel = jobData.axeLevel || 1;
-      equipLines.push(`🪓 Lumber Axe (Lv.${axeLevel})`);
+      const nextCost = axeLevel < 5 ? `Next upgrade: ${300} 💰` : 'MAXED';
+      equipLines.push(`🪓 Lumber Axe (Lv.${axeLevel}/5) — ${nextCost}`);
     }
     if (player.job === 'fisherman') {
       const rodLevel = jobData.rodLevel || 1;
-      equipLines.push(`🎣 Fishing Rod (Lv.${rodLevel})`);
+      const nextCost = rodLevel < 5 ? `Next upgrade: ${300} 💰` : 'MAXED';
+      equipLines.push(`🎣 Fishing Rod (Lv.${rodLevel}/5) — ${nextCost}`);
+    }
+    if (player.job === 'miner') {
+      const ores = jobData.miner_ores || {};
+      const totalOres = Object.values(ores).reduce((a, b) => a + b, 0);
+      equipLines.push(`⛏️ Miner — ${totalOres} raw ores in inventory`);
     }
     if (equipLines.length) embed.addFields({ name: '🛠️ Equipment', value: equipLines.join('\n'), inline: false });
 

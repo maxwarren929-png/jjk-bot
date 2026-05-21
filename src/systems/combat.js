@@ -107,7 +107,7 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
 
   // Resolve on-hit effects
   const hitResults = resolveEffects(tech, 'onHit', ctx);
-  damage = hitResults.damage || 0;
+  damage = (hitResults.damage || 0) + (hitResults.bonusDamage || 0) + (hitResults.aoeDamage || 0);
 
   if (damage > 0) {
     // Idle Transfiguration bypasses shields

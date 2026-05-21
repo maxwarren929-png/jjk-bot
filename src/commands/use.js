@@ -151,6 +151,7 @@ module.exports = {
       .setColor(0xE74C3C)
       .setDescription(result.log)
       .setImage(tech?.gif || null)
+      .addFields({ name: '📜 Lore', value: `*${tech?.lore || 'A technique of unknown origin.'}*`, inline: false })
       .setFooter(tech?.lore ? { text: tech.lore.slice(0, 100) } : null)
       .addFields(
         { name: `${actor.username}`, value: `${buildBar(result.actor.ce, result.actor.maxCe, '🟪', '⬛', 10)} ${result.actor.ce}/${result.actor.maxCe} CE`, inline: true },

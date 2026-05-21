@@ -5,6 +5,7 @@ const { eq } = require('drizzle-orm');
 const { assignInnate, getTechniqueById } = require('../systems/techniques');
 const { getMembership, getClan, getMembers, getPlayerClanBonus } = require('../systems/clans');
 const { buildBar, buildCeBar } = require('../systems/combat');
+const { getRegenBonus } = require('../systems/training');
 
 const PASSIVE_DESC = {
   CE_REGEN:        '+10% CE regeneration per tick',
@@ -96,7 +97,7 @@ module.exports = {
         },
         { name: '⚔️ Clan', value: clan ? `**${clan.name}** (${clanMemberCount} members)\n${PASSIVE_DESC[clan.passive_bonus] || clan.passive_bonus}` : 'Clanless', inline: true },
         { name: '🎭 Reputation', value: player.reputation, inline: true },
-        { name: '💜 CE / 5min', value: `${player.is_broken ? 2 : 5}${getPlayerClanBonus(discordId) === 'CE_REGEN' ? ' *+10% clan bonus*' : ''}`, inline: true },
+        { name: '💜 CE / 5min', value: `${formatRegen(player, discordId)}`, inline: true },
         { name: '📅 Sorcerer since', value: `<t:${Math.floor(player.created_at / 1000)}:D>`, inline: false },
       );
 
@@ -145,3 +146,12 @@ module.exports = {
     await interaction.editReply({ embeds: [embed] });
   },
 };
+
+function formatRegen(player, discordId) {
+  const base = player.is_broken ? 2 : 5;
+  const parts = [`${base}`];
+  if (getPlayerClanBonus(discordId) === 'CE_REGEN') parts.push('+10% clan');
+  const iso = getRegenBonus(player);
+  if (iso > 0) parts.push(`+${iso} isolation`);
+  return parts.join('｜');
+}

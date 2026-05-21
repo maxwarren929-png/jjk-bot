@@ -70,7 +70,7 @@ function applyShopEffect(player, itemId) {
           break;
         }
         case 'UNLOCK_ANY':
-          break;
+          return { ok: true, item, needsTechniquePick: true };
       }
 
       db.update(players).set(update).where(eq(players.discord_id, player.discord_id)).run();

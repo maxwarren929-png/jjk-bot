@@ -13,6 +13,15 @@ const TRAINING_REWARDS = {
   Isolation:  () => ({ _isolation: true }),
 };
 
+function safeParseJobData(data) {
+  try { return JSON.parse(data || '{}'); } catch { return {}; }
+}
+
+function getRegenBonus(player) {
+  const job = safeParseJobData(player.job_data);
+  return job.__regen_bonus || 0;
+}
+
 function startTraining(player, type) {
   if (player.is_broken) return { error: 'You are broken and cannot train.' };
   if (player.training_until && player.training_until > Date.now()) {
@@ -37,6 +46,11 @@ function completeTraining(player) {
   const update = { training_until: null, training_type: null };
   if (reward.max_ce) update.max_ce = reward.max_ce;
   if (reward.max_hp) update.max_hp = reward.max_hp;
+  if (reward._isolation) {
+    const job = safeParseJobData(fresh.job_data);
+    job.__regen_bonus = (job.__regen_bonus || 0) + 3;
+    update.job_data = JSON.stringify(job);
+  }
   db.update(players).set(update).where(eq(players.discord_id, fresh.discord_id)).run();
 
   return { type, reward: Object.keys(reward).length > 0 ? reward : null };
@@ -71,8 +85,10 @@ function regenAllPlayers() {
       const fresh = db.select().from(players).where(eq(players.discord_id, p.discord_id)).get();
       if (!fresh || fresh.ce >= fresh.max_ce) return;
       let regen = fresh.is_broken ? 2 : 5;
-      const bonus = getPlayerClanBonus(fresh.discord_id);
-      if (bonus === 'CE_REGEN') regen = Math.floor(regen * 1.1);
+      const clanBonus = getPlayerClanBonus(fresh.discord_id);
+      if (clanBonus === 'CE_REGEN') regen = Math.floor(regen * 1.1);
+      const isolationBonus = getRegenBonus(fresh);
+      regen += isolationBonus;
       db.update(players).set({ ce: Math.min(fresh.ce + regen, fresh.max_ce) }).where(eq(players.discord_id, fresh.discord_id)).run();
     })();
   }
@@ -114,4 +130,4 @@ function cancelTraining(player) {
   return { ok: true };
 }
 
-module.exports = { startTraining, completeTraining, regenAllPlayers, checkGradeUp, failTraining, checkAndNotifyCompletedTraining, cancelTraining, TRAINING_DURATION_MS };
+module.exports = { startTraining, completeTraining, regenAllPlayers, checkGradeUp, failTraining, checkAndNotifyCompletedTraining, cancelTraining, getRegenBonus, TRAINING_DURATION_MS };

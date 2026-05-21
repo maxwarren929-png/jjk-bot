@@ -38,11 +38,9 @@ module.exports = {
         {
           name: '🏦 Economy',
            value: '`/daily claim` — Claim daily reward (streak bonus)\n'
-                 + '`/daily info` — Check daily streak and next claim\n'
-                + '`/shop` — Buy items\n'
-                + '`/shopinfo` — View item details\n'
-                + '`/buy <item>` — Quick-buy an item\n'
-                + '`/bank` — Deposit/withdraw/upgrade bank (`all: true` for max)\n'
+                  + '`/daily info` — Check daily streak and next claim\n'
+                 + '`/shop` — Browse and buy items\n'
+                 + '`/bank balance/deposit/withdraw/upgrade` — Manage your cursed bank account\n'
                + '`/bankrob start/join/launch` — Group bank heist\n'
                + '`/pay <user> <amount>` — Send yen\n'
                  + '`/bounty place/list/cancel/check/top/placed` — Place, view, cancel, or top bounties\n'

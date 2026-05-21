@@ -4,7 +4,8 @@ const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 const { getCooldowns } = require('../systems/combat');
 const { TECHNIQUES } = require('../data/techniques');
-const { getMembership, getClan } = require('../systems/clans');
+const { getMembership, getClan, getPlayerClanBonus } = require('../systems/clans');
+const { getRegenBonus } = require('../systems/training');
 
 const ROB_COOLDOWN_MS = 3600000;
 const DOMAIN_COOLDOWN_MS = 30000;
@@ -70,6 +71,22 @@ module.exports = {
         return `**${tech?.name || techId}** — ${remain}s`;
       });
       lines.push(`⚔️ **Techniques**\n${techLines.join('\n')}`);
+    }
+
+    // CE Regen rate
+    {
+      const baseRegen = player.is_broken ? 2 : 5;
+      let regen = baseRegen;
+      const clanBonus = getPlayerClanBonus(player.discord_id);
+      if (clanBonus === 'CE_REGEN') regen = Math.floor(regen * 1.1);
+      const isoBonus = getRegenBonus(player);
+      regen += isoBonus;
+      const parts = [`**${regen}** CE per 5 min`];
+      if (baseRegen !== regen) {
+        if (clanBonus === 'CE_REGEN') parts.push('(+10% clan)');
+        if (isoBonus > 0) parts.push(`(+${isoBonus} isolation)`);
+      }
+      lines.push(`💜 **CE Regen** — ${parts.join(' ')}`);
     }
 
     if (lines.length === 0) {

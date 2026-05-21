@@ -62,19 +62,19 @@ module.exports = {
           return;
         }
 
-        let count;
+        let playerCount, clanCount, bountyCount;
         sqlite.transaction(() => {
-          count = db.delete(players).run();
+          playerCount = db.delete(players).run().changes;
+          clanCount = db.delete(clans).run().changes;
           db.delete(clan_members).run();
           db.delete(clan_invites).run();
-          db.delete(bounties).run();
-          db.delete(clans).run();
+          bountyCount = db.delete(bounties).run().changes;
         })();
 
         const embed = new EmbedBuilder()
           .setTitle('💥 Server Reset Complete')
           .setColor(0xE74C3C)
-          .setDescription(`Deleted **${count.changes}** player profiles. All clans, members, invites, and bounties cleared.`)
+          .setDescription(`Deleted **${playerCount}** players, **${clanCount}** clans, **${bountyCount}** bounties. All members and invites cleared.`)
           .setFooter({ text: 'Everyone must run /profile to start fresh.' });
 
         await interaction.editReply({ content: null, embeds: [embed], components: [] });
