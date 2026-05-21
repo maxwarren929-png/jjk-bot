@@ -99,7 +99,7 @@ async function dice(interaction) {
   if (roll === guess) {
     payout = amount * 4;
   } else if (Math.abs(roll - guess) === 1) {
-    payout = amount;
+    payout = 0; // push — get bet back (but bet wasn't deducted, so no change)
   } else {
     payout = -amount;
   }

@@ -8,7 +8,7 @@ module.exports = {
       try {
         await command.execute(interaction);
       } catch (err) {
-        console.error(`Command error [${interaction.commandName}]:`, err);
+        console.error(`[${new Date().toISOString()}] Command error [${interaction.commandName}]:`, err);
         try {
           const msg = { content: '❌ Something went wrong executing that command.', flags: 64 };
           if (interaction.replied || interaction.deferred) await interaction.followUp(msg);

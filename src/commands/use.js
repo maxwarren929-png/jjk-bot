@@ -108,10 +108,13 @@ module.exports = {
       result.log += ` 🗡️ *Split Soul Katana +${itemBonusDmg} damage*`;
     }
 
-    // Apply silence effect from Binding Ring
+    // Apply silence effect from Binding Ring (persist on target's DB)
     if (silencedTarget) {
-      result.log += ` 🔇 *Target silenced — next action skipped*`;
-      if (result.target?.statuses) result.target.statuses.push('🔇 SILENCED');
+      const targetData = JSON.parse(target.job_data || '{}');
+      if (!targetData.__statuses) targetData.__statuses = {};
+      targetData.__statuses.silenced_until = Date.now() + 3600_000; // 1 hour
+      db.update(players).set({ job_data: JSON.stringify(targetData) }).where(eq(players.discord_id, targetUser.id)).run();
+      result.log += ` 🔇 *Target silenced — next attack will fizzle!*`;
     }
 
     // If boss is active and damage was dealt, redirect to boss

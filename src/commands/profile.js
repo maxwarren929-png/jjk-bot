@@ -3,8 +3,15 @@ const { db } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 const { assignInnate, getTechniqueById } = require('../systems/techniques');
-const { getMembership, getClan } = require('../systems/clans');
+const { getMembership, getClan, getPlayerClanBonus } = require('../systems/clans');
 const { buildBar, buildCeBar } = require('../systems/combat');
+
+const PASSIVE_DESC = {
+  CE_REGEN:        '+10% CE regeneration per tick',
+  YEN_BOOST:       '+10% yen from fights',
+  DAMAGE_BOOST:    '+5% damage on all attacks',
+  DEATH_REDUCTION: '-10% yen penalty on death',
+};
 
 const GRADE_EMOJI = {
   'Grade 4': '🔵', 'Grade 3': '🟢', 'Grade 2': '🟡',
@@ -84,8 +91,9 @@ module.exports = {
           value: innate ? `**${innate.name}**\n${innate.description}` : innateDead ? '~~Destroyed~~' : 'None',
           inline: false,
         },
-        { name: '⚔️ Clan', value: clan ? `**${clan.name}**` : 'Clanless', inline: true },
+        { name: '⚔️ Clan', value: clan ? `**${clan.name}**\n${PASSIVE_DESC[clan.passive_bonus] || clan.passive_bonus}` : 'Clanless', inline: true },
         { name: '🎭 Reputation', value: player.reputation, inline: true },
+        { name: '💜 CE / 5min', value: `${player.is_broken ? 2 : 5}${getPlayerClanBonus(discordId) === 'CE_REGEN' ? ' *+10% clan bonus*' : ''}`, inline: true },
       );
 
     if (player.is_broken) {

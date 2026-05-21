@@ -1,4 +1,4 @@
-const { db } = require('../db/index');
+const { db, sqlite } = require('../db/index');
 const { clans, clan_members, clan_invites, players } = require('../db/schema');
 const { eq, and } = require('drizzle-orm');
 
@@ -127,13 +127,15 @@ function transferLeadership(leader, targetId) {
   }
 
   const clan = getClan(membership.clan_id);
-  db.update(clan_members).set({ role: 'Member' })
-    .where(and(eq(clan_members.clan_id, clan.id), eq(clan_members.player_id, leader.discord_id)))
-    .run();
-  db.update(clan_members).set({ role: 'Leader' })
-    .where(and(eq(clan_members.clan_id, clan.id), eq(clan_members.player_id, targetId)))
-    .run();
-  db.update(clans).set({ owner_id: targetId }).where(eq(clans.id, clan.id)).run();
+  sqlite.transaction(() => {
+    db.update(clan_members).set({ role: 'Member' })
+      .where(and(eq(clan_members.clan_id, clan.id), eq(clan_members.player_id, leader.discord_id)))
+      .run();
+    db.update(clan_members).set({ role: 'Leader' })
+      .where(and(eq(clan_members.clan_id, clan.id), eq(clan_members.player_id, targetId)))
+      .run();
+    db.update(clans).set({ owner_id: targetId }).where(eq(clans.id, clan.id)).run();
+  })();
 
   return { ok: true, clan };
 }

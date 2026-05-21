@@ -42,11 +42,11 @@ setInterval(() => checkAndNotifyCompletedTraining(client), 30 * 1000);
 process.on('SIGINT', () => { console.log('\n⚠️  SIGINT received. Shutting down gracefully...'); process.exit(0); });
 process.on('SIGTERM', () => { console.log('\n⚠️  SIGTERM received. Shutting down gracefully...'); process.exit(0); });
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason?.stack || reason);
+  console.error(`[${new Date().toISOString()}] ❌ Unhandled Rejection at:`, promise, 'reason:', reason?.stack || reason);
 });
 process.on('warning', warn => {
   if (warn.name === 'DeprecationWarning') return;
-  console.error(`⚠️  ${warn.name}: ${warn.message}`);
+  console.error(`[${new Date().toISOString()}] ⚠️  ${warn.name}: ${warn.message}`);
 });
 
 client.login(process.env.DISCORD_TOKEN);

@@ -83,11 +83,14 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
   actorState.ce -= tech.ce_cost;
   userCDs[techniqueId] = now + tech.cooldown_seconds * 1000;
 
-  // Check if target is silenced (Binding Ring effect)
-  if (targetState.statuses.includes('🔇 SILENCED')) {
-    targetState.statuses = targetState.statuses.filter(s => s !== '🔇 SILENCED');
-    db.update(players).set({ ce: actorState.ce }).where(eq(players.discord_id, actor.discord_id)).run();
-    return { ok: true, damage: 0, log: `🔇 **${target.username}** was silenced — the attack fizzled!`, targetHp: targetState.hp, rewards: null, actor: actorState, target: targetState };
+  // Check if actor is silenced (Binding Ring effect — persisted via job_data.__statuses.silenced_until)
+  const actorJobData = JSON.parse(actor.job_data || '{}');
+  const actorStatuses = actorJobData.__statuses || {};
+  if (actorStatuses.silenced_until && actorStatuses.silenced_until > Date.now()) {
+    delete actorStatuses.silenced_until;
+    actorJobData.__statuses = actorStatuses;
+    db.update(players).set({ ce: actorState.ce, job_data: JSON.stringify(actorJobData) }).where(eq(players.discord_id, actor.discord_id)).run();
+    return { ok: true, damage: 0, log: `🔇 **${actor.username}** is silenced — the attack fizzled!`, targetHp: targetState.hp, rewards: null, actor: actorState, target: targetState };
   }
 
   // Resolve on-use effects
