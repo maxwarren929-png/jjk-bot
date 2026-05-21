@@ -80,16 +80,26 @@ function checkAndNotifyCompletedTraining(client) {
 function regenAllPlayers() {
   const allPlayers = db.select().from(players).all();
   for (const p of allPlayers) {
-    if (p.ce >= p.max_ce) continue;
+    if (p.ce >= p.max_ce && p.hp >= p.max_hp) continue;
     sqlite.transaction(() => {
       const fresh = db.select().from(players).where(eq(players.discord_id, p.discord_id)).get();
-      if (!fresh || fresh.ce >= fresh.max_ce) return;
-      let regen = fresh.is_broken ? 2 : 5;
-      const clanBonus = getPlayerClanBonus(fresh.discord_id);
-      if (clanBonus === 'CE_REGEN') regen = Math.floor(regen * 1.1);
-      const isolationBonus = getRegenBonus(fresh);
-      regen += isolationBonus;
-      db.update(players).set({ ce: Math.min(fresh.ce + regen, fresh.max_ce) }).where(eq(players.discord_id, fresh.discord_id)).run();
+      if (!fresh) return;
+      const update = {};
+      if (fresh.ce < fresh.max_ce) {
+        let regen = fresh.is_broken ? 2 : 5;
+        const clanBonus = getPlayerClanBonus(fresh.discord_id);
+        if (clanBonus === 'CE_REGEN') regen = Math.floor(regen * 1.1);
+        const isolationBonus = getRegenBonus(fresh);
+        regen += isolationBonus;
+        update.ce = Math.min(fresh.ce + regen, fresh.max_ce);
+      }
+      if (fresh.hp < fresh.max_hp) {
+        const hpRegen = fresh.is_broken ? 3 : 8;
+        update.hp = Math.min(fresh.hp + hpRegen, fresh.max_hp);
+      }
+      if (Object.keys(update).length > 0) {
+        db.update(players).set(update).where(eq(players.discord_id, fresh.discord_id)).run();
+      }
     })();
   }
 }
@@ -130,4 +140,4 @@ function cancelTraining(player) {
   return { ok: true };
 }
 
-module.exports = { startTraining, completeTraining, regenAllPlayers, checkGradeUp, failTraining, checkAndNotifyCompletedTraining, cancelTraining, getRegenBonus, TRAINING_DURATION_MS };
+module.exports = { startTraining, completeTraining, regenAllPlayers, checkGradeUp, failTraining, checkAndNotifyCompletedTraining, cancelTraining, getRegenBonus };

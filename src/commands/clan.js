@@ -209,15 +209,20 @@ module.exports = {
         content: `☠️ **Are you sure?** Disbanding **${clan.name}** will permanently delete it and eject all ${getMembers(clan.id).length} members. There is no undo.`,
         components: [confirmComp],
       });
-      const col = interaction.channel.createMessageComponentCollector({ filter: i => i.user.id === interaction.user.id, time: 30_000, max: 1 });
+      const reply = await interaction.fetchReply();
+      const col = reply.createMessageComponentCollector({ filter: i => i.user.id === interaction.user.id, time: 30_000, max: 1 });
       col.on('collect', async btn => {
         await btn.deferUpdate();
         if (btn.customId === 'disband_cancel') {
           await interaction.editReply({ content: '✅ Disband cancelled.', components: [] });
           return;
         }
+        const result = disbandClan(player);
+        if (result && result.error) {
+          await interaction.editReply({ content: `❌ ${result.error}`, components: [] });
+          return;
+        }
         await interaction.editReply({ content: `💥 Clan **${clan.name}** has been disbanded. All members ejected.`, components: [] });
-        disbandClan(player);
       });
       col.on('end', (_, reason) => {
         if (reason === 'time') interaction.editReply({ components: [] }).catch(() => {});

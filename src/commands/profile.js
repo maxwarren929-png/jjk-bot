@@ -6,6 +6,7 @@ const { assignInnate, getTechniqueById } = require('../systems/techniques');
 const { getMembership, getClan, getMembers, getPlayerClanBonus } = require('../systems/clans');
 const { buildBar, buildCeBar } = require('../systems/combat');
 const { getRegenBonus } = require('../systems/training');
+const { formatEquipmentEmbed } = require('../systems/equipment');
 
 const PASSIVE_DESC = {
   CE_REGEN:        '+10% CE regeneration per tick',
@@ -90,6 +91,7 @@ module.exports = {
         { name: '💰 Yen', value: `${player.yen.toLocaleString()} 💰`, inline: true },
         { name: '🏦 Bank', value: `${(player.bank_balance || 0).toLocaleString()} 💰`, inline: true },
         { name: '🏆 Wins', value: `${player.fight_wins}`, inline: true },
+        { name: '💀 Losses', value: `${player.fight_losses || 0}`, inline: true },
         { name: '🔥 Daily Streak', value: `${player.daily_streak || 0} day${(player.daily_streak || 0) > 1 ? 's' : ''}`, inline: true },
         {
           name: '👁️ Innate Technique',
@@ -98,6 +100,7 @@ module.exports = {
         },
         { name: '⚔️ Clan', value: clan ? `**${clan.name}** (${clanMemberCount} members)\n${PASSIVE_DESC[clan.passive_bonus] || clan.passive_bonus}` : 'Clanless', inline: true },
         { name: '🎭 Reputation', value: player.reputation, inline: true },
+        { name: '⚔️ Equipment', value: formatEquipmentEmbed(discordId), inline: false },
         { name: '💜 CE / 5min', value: `${formatRegen(player, discordId)}`, inline: true },
         { name: '📅 Sorcerer since', value: `<t:${Math.floor(player.created_at / 1000)}:D>`, inline: false },
       );

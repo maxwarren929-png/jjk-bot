@@ -186,19 +186,20 @@ async function giveItem(interaction) {
   if (!item) return interaction.editReply('❌ Unknown item.');
 
   let transferred = false;
+  let failReason = 'Item not found in your inventory.';
   sqlite.transaction(() => {
     const giver = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
-    if (!giver) return;
+    if (!giver) { failReason = '❌ Your profile was not found. Run `/profile` first.'; return; }
     const giverJob = (() => { try { return JSON.parse(giver.job_data || '{}'); } catch { return {}; } })();
     const giverItems = giverJob.__items || [];
     const idx = giverItems.indexOf(itemKey);
-    if (idx === -1) return;
+    if (idx === -1) { failReason = '❌ Item not found in your inventory.'; return; }
     giverItems.splice(idx, 1);
     giverJob.__items = giverItems;
     db.update(players).set({ job_data: JSON.stringify(giverJob) }).where(eq(players.discord_id, interaction.user.id)).run();
 
     const recv = db.select().from(players).where(eq(players.discord_id, targetUser.id)).get();
-    if (!recv) return;
+    if (!recv) { failReason = `❌ **${targetUser.username}** has no profile.`; return; }
     const recvJob = (() => { try { return JSON.parse(recv.job_data || '{}'); } catch { return {}; } })();
     if (!recvJob.__items) recvJob.__items = [];
     if (!recvJob.__items.includes(itemKey)) recvJob.__items.push(itemKey);
@@ -206,7 +207,7 @@ async function giveItem(interaction) {
     transferred = true;
   })();
 
-  if (!transferred) return interaction.editReply('❌ Item not found in your inventory.');
+  if (!transferred) return interaction.editReply(failReason);
 
   const embed = new EmbedBuilder()
     .setTitle('🎁 Item Given')
@@ -224,7 +225,7 @@ async function useItem(interaction) {
   const jobData = (() => { try { return JSON.parse(player.job_data || '{}'); } catch { return {}; } })();
   const items = jobData.__items || [];
   const idx = items.indexOf(itemKey);
-  if (idx === -1) return interaction.editReply(`❌ You don't have a **${USEABLE_ITEMS[itemKey].name}**. Buy one from \`/shop\`.`);
+  if (idx === -1) return interaction.editReply(`❌ You don't have a **${(USEABLE_ITEMS[itemKey]?.name) || itemKey}**. Buy one from \`/shop\`.`);
 
   items.splice(idx, 1);
   const resultText = USEABLE_ITEMS[itemKey].desc;

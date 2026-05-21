@@ -87,6 +87,8 @@ module.exports = {
       silenceTarget: preInv.includes('SILENCE_NEXT'),
     };
 
+    const tech = TECHNIQUES.find(t => t.id === techniqueId);
+
     const result = applyTechnique(actor, finalTarget, techniqueId, interaction, bossRedirect, itemEffects);
     if (result.error) {
       await interaction.editReply(`❌ ${result.error}`);
@@ -142,7 +144,6 @@ module.exports = {
       }
     }
 
-    const tech = TECHNIQUES.find(t => t.id === techniqueId);
     const embed = new EmbedBuilder()
       .setTitle(`⚔️ ${tech?.name || 'Cursed Technique Used'}`)
       .setColor(0xE74C3C)

@@ -157,7 +157,7 @@ module.exports = {
           const f = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
           if (!f) return;
           const maxStore = f.bank_max - (f.bank_balance || 0);
-          const a = Math.min(actual, f.yen, maxStore);
+          const a = Math.min(amount, f.yen, maxStore);
           db.update(players).set({ yen: f.yen - a, bank_balance: (f.bank_balance || 0) + a })
             .where(eq(players.discord_id, interaction.user.id)).run();
         })();
@@ -201,11 +201,12 @@ module.exports = {
       if (all) amount = bankBal;
       if (!amount || amount <= 0) return interaction.editReply('❌ Specify an amount or use `all: true`.');
       if (amount > bankBal) return interaction.editReply(`❌ You only have **${bankBal.toLocaleString()} 💰** in the bank.`);
+      let w = 0;
       sqlite.transaction(() => {
         const f = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
         if (!f) return;
         const bal = f.bank_balance || 0;
-        const w = Math.min(amount, bal);
+        w = Math.min(amount, bal);
         db.update(players).set({ yen: f.yen + w, bank_balance: bal - w })
           .where(eq(players.discord_id, interaction.user.id)).run();
       })();
@@ -213,7 +214,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setTitle('🏦 Withdrawal')
         .setColor(0xE74C3C)
-        .setDescription(`Withdrew **${amount} 💰**`)
+        .setDescription(`Withdrew **${w} 💰**`)
         .addFields(
           { name: '👛 Wallet', value: `${afterWithdraw.yen} 💰`, inline: true },
           { name: '🏦 Bank', value: `${afterWithdraw.bank_balance || 0} 💰`, inline: true },

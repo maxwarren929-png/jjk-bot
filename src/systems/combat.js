@@ -1,6 +1,7 @@
 const { db, sqlite } = require('../db/index');
 const { players, bounties } = require('../db/schema');
 const { eq } = require('drizzle-orm');
+const { EmbedBuilder } = require('discord.js');
 const { getTechniqueById, getPlayerTechniques } = require('./techniques');
 const { checkGradeUp } = require('./training');
 const { buildEffectContext, resolveEffects, resolveLegacyStatus } = require('./effects');
@@ -364,7 +365,6 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
   if (rewards && interaction) {
     interaction.client.users.fetch(target.discord_id).then(targetUser => {
       if (!targetUser) return;
-      const { EmbedBuilder } = require('discord.js');
       const deathEmbed = new EmbedBuilder()
         .setTitle('💀 You have been defeated!')
         .setColor(0x000000)

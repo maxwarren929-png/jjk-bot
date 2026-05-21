@@ -13,12 +13,14 @@ module.exports = {
       .setColor(0x9B59B6)
       .addFields(
         {
-          name: '👤 Profile & Progression',
-          value: '`/profile` — View or create your sorcerer profile\n'
+           name: '👤 Profile & Progression',
+          value: '`/profile` — View or create your sorcerer profile (shows equipment)\n'
                + '`/techniques` — View your techniques with mastery\n'
                + '`/rank` — View your PvP rating and leaderboard position\n'
                + '`/lastfight` — View your most recent combat result\n'
                + '`/cooldowns` — View all active cooldowns\n'
+               + '`/rest` — Rest for 30s to recover 30% HP\n'
+               + '`/meditate` — Meditate for 60s to recover 90 CE in bursts\n'
                + '`/train start <type>` — Begin a 2-hour training session\n'
                + '`/train status` — Check training progress\n'
                + '`/train cancel` — Cancel current training (no refund)\n'
@@ -36,13 +38,12 @@ module.exports = {
           inline: false,
         },
         {
-          name: '🏦 Economy',
+           name: '🏦 Economy',
           value: '`/daily claim` — Claim daily reward (streak bonus)\n'
                + '`/daily info` — Check daily streak and next claim\n'
                + '`/shop` — Browse and buy items\n'
                + '`/buy <item> [quantity]` — Quick-buy with bulk support\n'
                + '`/stats` — Server-wide statistics\n'
-               + '`/collection` — Browse all equipment and items\n'
                + '`/enhance <slot>` — Upgrade equipped gear with CE\n'
                + '`/bank balance/deposit/withdraw/upgrade` — Manage your cursed bank account\n'
                + '`/bankrob start/join/launch` — Group bank heist\n'
@@ -65,9 +66,11 @@ module.exports = {
           inline: false,
         },
         {
-          name: '📦 Inventory & Equipment',
+           name: '📦 Inventory & Equipment',
           value: '`/inventory view/use/sell/give` — Manage and gift your items\n'
                + '`/inventory equip/unequip` — Equip weapons and armor from your inventory\n'
+               + '`/iteminfo <item>` — View detailed stats on any item\n'
+               + '`/collection` — Browse all equipment and items\n'
                + 'Use **HP Potion** & **CE Elixir** to heal instantly. Equip **cursed tools** for combat bonuses.',
           inline: false,
         },

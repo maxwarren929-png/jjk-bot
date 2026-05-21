@@ -12,38 +12,32 @@ module.exports = {
   async execute(interaction) {
     await interaction.deferReply();
     const player = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+    const job = player ? (() => { try { return JSON.parse(player.job_data || '{}'); } catch { return {}; } })() : {};
+    const ownEnh = job.__enhancements || {};
+    const ownItems = job.__items || [];
+    const ownEq = job.__equipment || {};
 
-    const ownEnh = player ? (() => { try { return JSON.parse(player.job_data || '{}').__enhancements || {}; } catch { return {}; } })() : {};
-    const ownItems = player ? (() => { try { return JSON.parse(player.job_data || '{}').__items || []; } catch { return []; } })() : {};
-    const ownEq = player ? (() => { try { return JSON.parse(player.job_data || '{}').__equipment || {}; } catch { return {}; } })() : {};
-
-    const config = [];
-
+    const bySlot = { weapon: [], armor: [] };
     for (const [key, item] of Object.entries(EQUIPMENT_ITEMS)) {
       const owned = ownItems.includes(key) || Object.values(ownEq).includes(key);
       const level = ownEnh[key] || 0;
       const b = getEnhancedBonuses(key, 0);
       const bDesc = Object.entries(b).map(([k, v]) => `+${v} ${k.replace(/([A-Z])/g, ' $1').trim()}`).join(', ');
-      config.push({
-        name: `${item.name}`,
-        value: `📦 ${item.slot} • ${bDesc} • Cost: ${item.cost} 💰\nEnhance: +${MAX_ENHANCE} max, +30%/lvl${owned ? `\n✅ Owned (Lv.${level})` : ''}`,
-        inline: false,
+      bySlot[item.slot].push({
+        display: `**${item.name}**\n${bDesc} • Cost: ${item.cost} 💰\nEnhance: +${MAX_ENHANCE} max, +30%/lvl${owned ? `\n✅ Owned (Lv.${level})` : ''}`,
       });
     }
-
-    const weaponItems = config.filter(c => c.value.includes('weapon'));
-    const armorItems = config.filter(c => c.value.includes('armor'));
 
     const embed = new EmbedBuilder()
       .setTitle('📚 Equipment Collection')
       .setColor(0x9B59B6)
       .setDescription('Browse all equipment and their base stats. Enchanting increases stats by 30% per level.');
 
-    if (weaponItems.length > 0) {
-      embed.addFields({ name: '⚔️ Weapons', value: weaponItems.map(c => `**${c.name}**\n${c.value.replace(/^(.*?)(weapon)(.*)$/m, '$1$3')}`).join('\n\n'), inline: false });
+    if (bySlot.weapon.length > 0) {
+      embed.addFields({ name: '⚔️ Weapons', value: bySlot.weapon.map(e => e.display).join('\n\n'), inline: false });
     }
-    if (armorItems.length > 0) {
-      embed.addFields({ name: '🛡️ Armor', value: armorItems.map(c => `**${c.name}**\n${c.value.replace(/^(.*?)(armor)(.*)$/m, '$1$3')}`).join('\n\n'), inline: false });
+    if (bySlot.armor.length > 0) {
+      embed.addFields({ name: '🛡️ Armor', value: bySlot.armor.map(e => e.display).join('\n\n'), inline: false });
     }
 
     embed.addFields(
