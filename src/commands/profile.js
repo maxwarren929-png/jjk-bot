@@ -47,6 +47,7 @@ module.exports = {
         is_broken: false,
         fight_wins: 0,
         bounty_kills: 0,
+        last_daily_at: Date.now(),
         created_at: Date.now(),
       }).run();
       player = db.select().from(players).where(eq(players.discord_id, discordId)).get();

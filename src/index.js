@@ -28,8 +28,14 @@ setInterval(() => regenAllPlayers(), 5 * 60 * 1000);
 // Training completion check every 30 seconds
 setInterval(() => checkAndNotifyCompletedTraining(client), 30 * 1000);
 
-process.on('SIGINT', () => { console.log('Shutting down...'); process.exit(0); });
-process.on('SIGTERM', () => { console.log('Shutting down...'); process.exit(0); });
-process.on('unhandledRejection', err => console.error('Unhandled rejection:', err));
+process.on('SIGINT', () => { console.log('\n⚠️  SIGINT received. Shutting down gracefully...'); process.exit(0); });
+process.on('SIGTERM', () => { console.log('\n⚠️  SIGTERM received. Shutting down gracefully...'); process.exit(0); });
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason?.stack || reason);
+});
+process.on('warning', warn => {
+  if (warn.name === 'DeprecationWarning') return;
+  console.error(`⚠️  ${warn.name}: ${warn.message}`);
+});
 
 client.login(process.env.DISCORD_TOKEN);

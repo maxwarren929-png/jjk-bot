@@ -20,7 +20,8 @@ module.exports = {
           value: '`/profile` — View or create your sorcerer profile\n'
                + '`/techniques` — View your techniques\n'
                + '`/train <type>` — Start a 2-hour training session\n'
-               + '`/leaderboard` — Top 10 richest players',
+               + '`/leaderboard` — Top players by wealth, wins, or grade\n'
+               + '`/rankup` — Check grade progression requirements',
           inline: false,
         },
         {

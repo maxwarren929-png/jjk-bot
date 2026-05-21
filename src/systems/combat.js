@@ -34,7 +34,7 @@ function rollBlackFlash() {
   return Math.random() < 0.05;
 }
 
-function applyTechnique(actor, target, techniqueId, interaction = null) {
+function applyTechnique(actor, target, techniqueId, interaction = null, skipTargetDamage = false) {
   const tech = getTechniqueById(techniqueId);
   if (!tech) return { error: 'Unknown technique.' };
 
@@ -160,7 +160,7 @@ function applyTechnique(actor, target, techniqueId, interaction = null) {
 
   // Handle target death
   let rewards = null;
-  if (targetState.hp <= 0) {
+  if (!skipTargetDamage && targetState.hp <= 0) {
     const stolenYen = target.yen + (target.bank_balance || 0);
 
     targetUpdate.is_broken = true;
@@ -192,7 +192,9 @@ function applyTechnique(actor, target, techniqueId, interaction = null) {
   }
 
   db.update(players).set(actorUpdate).where(eq(players.discord_id, actor.discord_id)).run();
-  db.update(players).set(targetUpdate).where(eq(players.discord_id, target.discord_id)).run();
+  if (!skipTargetDamage) {
+    db.update(players).set(targetUpdate).where(eq(players.discord_id, target.discord_id)).run();
+  }
 
   if (interaction && tech) {
     const ctx = {

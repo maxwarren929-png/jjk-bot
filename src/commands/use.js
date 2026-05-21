@@ -89,14 +89,16 @@ module.exports = {
       actorJob.__items = items;
       db.update(players).set({ job_data: JSON.stringify(actorJob) }).where(eq(players.discord_id, discordId)).run();
     }
+    let silencedTarget = false;
     if (items.includes('SILENCE_NEXT')) {
       const idx = items.indexOf('SILENCE_NEXT');
       items.splice(idx, 1);
       actorJob.__items = items;
       db.update(players).set({ job_data: JSON.stringify(actorJob) }).where(eq(players.discord_id, discordId)).run();
+      silencedTarget = true;
     }
 
-    const result = applyTechnique(actor, finalTarget, techniqueId, interaction);
+    const result = applyTechnique(actor, finalTarget, techniqueId, interaction, bossRedirect);
     if (result.error) {
       await interaction.editReply(`❌ ${result.error}`);
       return;
@@ -104,6 +106,12 @@ module.exports = {
     if (itemBonusDmg > 0 && result.damage > 0) {
       result.damage += itemBonusDmg;
       result.log += ` 🗡️ *Split Soul Katana +${itemBonusDmg} damage*`;
+    }
+
+    // Apply silence effect from Binding Ring
+    if (silencedTarget) {
+      result.log += ` 🔇 *Target silenced — next action skipped*`;
+      if (result.target?.statuses) result.target.statuses.push('🔇 SILENCED');
     }
 
     // If boss is active and damage was dealt, redirect to boss

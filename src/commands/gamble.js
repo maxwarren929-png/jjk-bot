@@ -71,8 +71,8 @@ async function coinflip(interaction) {
   const result = Math.random() < 0.5 ? 'heads' : 'tails';
   const win = result === call;
   const payout = win ? amount : -amount;
-  const emoji = result === 'heads' ? '🪙' : '🪙';
-  const callEmoji = call === 'heads' ? '🪙' : '🪙';
+  const emoji = result === 'heads' ? '👑' : '🌿';
+  const callEmoji = call === 'heads' ? '👑' : '🌿';
 
   db.update(players).set({ yen: player.yen + payout })
     .where(eq(players.discord_id, interaction.user.id)).run();

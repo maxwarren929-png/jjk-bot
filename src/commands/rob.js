@@ -4,7 +4,7 @@ const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 
 const GRADE_ORDER = ['Grade 4', 'Grade 3', 'Grade 2', 'Grade 1', 'Semi-Special Grade', 'Special Grade'];
-const COOLDOWN_MS = 60000;
+const COOLDOWN_MS = 3600000;
 const BASE_CHANCE = 0.35;
 const STEAL_PCT = 0.4;
 const MAX_STEAL = 500;
