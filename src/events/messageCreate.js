@@ -1,6 +1,7 @@
 const { db } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
+const { failTraining } = require('../systems/training');
 
 module.exports = {
   name: 'messageCreate',
@@ -13,16 +14,11 @@ module.exports = {
     if (!player) return;
 
     // Check if actively training
-    if (player.training_until && player.training_until > Date.now()) {
-      const type = player.training_type;
-      db.update(players)
-        .set({ training_until: null, training_type: null })
-        .where(eq(players.discord_id, message.author.id))
-        .run();
-
+    const failedTraining = failTraining(player);
+    if (failedTraining) {
       try {
         const msg = await message.channel.send({
-          content: `💥 **${message.author.username}** spoke during training and **failed** their ${type} session! All progress lost. Focus next time.`,
+          content: `💥 **${message.author.username}** spoke during training and **failed** their ${failedTraining.type} session! All progress lost. Focus next time.`,
         });
         setTimeout(() => msg.delete().catch(() => {}), 10_000);
       } catch { /* can't send */ }

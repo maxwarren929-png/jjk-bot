@@ -43,10 +43,11 @@ module.exports = {
       const bounties = listBounties();
       if (bounties.length === 0) return interaction.editReply('❌ No active bounties.');
 
+      const sorted = bounties.sort((a, b) => b.total - a.total);
       const embed = new EmbedBuilder()
-        .setTitle('💰 Active Bounties')
+        .setTitle(`💰 Active Bounties (${bounties.length})`)
         .setColor(0xF1C40F)
-        .setDescription(bounties.map(b => `<@${b.targetId}> — **${b.total} 💰**`).join('\n'));
+        .setDescription(sorted.map(b => `<@${b.targetId}> — **${b.total.toLocaleString()} 💰**`).join('\n'));
       return interaction.editReply({ embeds: [embed] });
     }
   },

@@ -25,7 +25,7 @@ module.exports = {
       .setDescription(`Your balance: **${player.yen} 💰**\n\nSelect an item to purchase:`)
       .addFields(SHOP_CATALOG.map(item => ({
         name: `${item.name} — ${item.cost} 💰`,
-        value: item.description,
+        value: `${item.description}\n└ Sells for **${Math.floor(item.cost * 0.5)} 💰**`,
         inline: false,
       })));
 
@@ -190,7 +190,9 @@ async function techniquePicker(interaction, btn, discordId) {
 
   await renderPage();
 
-  const msg = await interaction.fetchReply();
+  let msg;
+  try { msg = await interaction.fetchReply(); } catch { return; }
+  if (!msg) return;
   const col = msg.createMessageComponentCollector({ filter: i => i.user.id === discordId, time: 60_000 });
 
   col.on('collect', async i => {

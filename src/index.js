@@ -20,8 +20,12 @@ client.commands = new Collection();
 // Load commands
 const commandsPath = path.join(__dirname, 'commands');
 for (const file of fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'))) {
-  const cmd = require(path.join(commandsPath, file));
-  if (cmd.data && cmd.execute) client.commands.set(cmd.data.name, cmd);
+  try {
+    const cmd = require(path.join(commandsPath, file));
+    if (cmd.data && cmd.execute) client.commands.set(cmd.data.name, cmd);
+  } catch (err) {
+    console.error(`[${new Date().toISOString()}] ❌ Failed to load command ${file}:`, err.message);
+  }
 }
 
 // Load events

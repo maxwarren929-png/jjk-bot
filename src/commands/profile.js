@@ -109,6 +109,18 @@ module.exports = {
       embed.addFields({ name: '🏋️ Training', value: `${player.training_type} — **${remainMin}m remaining**`, inline: false });
     }
 
+    const ROB_COOLDOWN = 3600000;
+    if (player.last_robbed_at && Date.now() - player.last_robbed_at < ROB_COOLDOWN) {
+      const wait = Math.ceil((ROB_COOLDOWN - (Date.now() - player.last_robbed_at)) / 60000);
+      embed.addFields({ name: '⏳ Rob Cooldown', value: `**${wait}m** remaining`, inline: true });
+    }
+
+    const DOMAIN_COOLDOWN = 30000;
+    if (player.last_domain_at && Date.now() - player.last_domain_at < DOMAIN_COOLDOWN) {
+      const wait = Math.ceil((DOMAIN_COOLDOWN - (Date.now() - player.last_domain_at)) / 1000);
+      embed.addFields({ name: '⏳ Domain Cooldown', value: `**${wait}s** remaining`, inline: true });
+    }
+
     await interaction.editReply({ embeds: [embed] });
   },
 };
