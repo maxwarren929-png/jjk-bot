@@ -30,13 +30,14 @@ module.exports = {
     const result = transferYen(senderId, target.id, amount);
     if (result.error) return interaction.editReply(`❌ ${result.error}`);
 
+    const freshSender = db.select().from(players).where(eq(players.discord_id, senderId)).get();
     const embed = new EmbedBuilder()
       .setTitle('💸 Transfer')
       .setColor(0x2ECC71)
       .setDescription(`${interaction.user.username} → ${target.username}`)
       .addFields(
         { name: 'Amount', value: `${amount} 💰`, inline: true },
-        { name: 'Your Balance', value: `${sender.yen - amount} 💰`, inline: true },
+        { name: 'Your Balance', value: `${freshSender?.yen || 0} 💰`, inline: true },
       );
 
     await interaction.editReply({ embeds: [embed] });

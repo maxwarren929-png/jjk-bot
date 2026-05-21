@@ -22,8 +22,9 @@ function nextTier(bankMax) {
   return idx >= 0 && idx < BANK_TIERS.length - 1 ? BANK_TIERS[idx + 1] : null;
 }
 
-function accrueInterest(player) {
-  if (!player.bank_balance || player.bank_balance <= 0) return 0;
+function accrueInterest(discordId) {
+  const player = db.select().from(players).where(eq(players.discord_id, discordId)).get();
+  if (!player || !player.bank_balance || player.bank_balance <= 0) return 0;
   const now = Date.now();
   const last = player.last_interest_at || now;
   const hours = (now - last) / 3600000;
@@ -31,7 +32,7 @@ function accrueInterest(player) {
   const interest = Math.floor(player.bank_balance * INTEREST_RATE * Math.min(hours, 24));
   if (interest <= 0) return 0;
   db.update(players).set({ bank_balance: player.bank_balance + interest, last_interest_at: now })
-    .where(eq(players.discord_id, player.discord_id)).run();
+    .where(eq(players.discord_id, discordId)).run();
   return interest;
 }
 
@@ -57,7 +58,7 @@ module.exports = {
     if (!player) return interaction.editReply('❌ Run `/profile` first.');
 
     if (sub === 'balance') {
-      const interest = accrueInterest(player);
+      const interest = accrueInterest(interaction.user.id);
       const refreshed = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
       const tier = getTier(refreshed.bank_max);
       const embed = new EmbedBuilder()
@@ -126,7 +127,7 @@ module.exports = {
 
     if (sub === 'deposit') {
       // Accrue interest first, then re-fetch to avoid stale balance
-      accrueInterest(player);
+      accrueInterest(interaction.user.id);
       const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
       const walletYen = fresh.yen;
       const bankBal = fresh.bank_balance || 0;
@@ -162,7 +163,7 @@ module.exports = {
     }
 
     if (sub === 'withdraw') {
-      accrueInterest(player);
+      accrueInterest(interaction.user.id);
       const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
       const bankBal = fresh.bank_balance || 0;
       if (amount > bankBal) return interaction.editReply(`❌ You only have **${bankBal.toLocaleString()} 💰** in the bank.`);

@@ -1,4 +1,4 @@
-const { db } = require('../db/index');
+const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 const { getTechniqueById, getPlayerTechniques } = require('./techniques');
@@ -237,10 +237,12 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
     if (gradeUp) rewards.gradeUp = gradeUp;
   }
 
-  db.update(players).set(actorUpdate).where(eq(players.discord_id, actor.discord_id)).run();
-  if (!skipTargetDamage) {
-    db.update(players).set(targetUpdate).where(eq(players.discord_id, target.discord_id)).run();
-  }
+  sqlite.transaction(() => {
+    db.update(players).set(actorUpdate).where(eq(players.discord_id, actor.discord_id)).run();
+    if (!skipTargetDamage) {
+      db.update(players).set(targetUpdate).where(eq(players.discord_id, target.discord_id)).run();
+    }
+  })();
 
   // Send death notification DM
   if (rewards && interaction) {

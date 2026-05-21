@@ -90,9 +90,35 @@ module.exports = {
       await interaction.editReply({ embeds: [embed] });
 
     } else if (sub === 'leave') {
-      const result = leaveClan(player);
-      if (result.error) { await interaction.editReply(`❌ ${result.error}`); return; }
-      await interaction.editReply('✅ You have left your clan.');
+      const membership = getMembership(interaction.user.id);
+      if (!membership) { await interaction.editReply('❌ You are not in a clan.'); return; }
+      const clan = getClan(membership.clan_id);
+      const clanName = clan?.name || 'your clan';
+      const confirmRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('leave_confirm').setLabel(`✅ Leave ${clanName}`).setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('leave_cancel').setLabel('Cancel').setStyle(ButtonStyle.Secondary),
+      );
+      await interaction.editReply({
+        content: `Are you sure you want to leave **${clanName}**?`,
+        components: [confirmRow],
+      });
+      const col = interaction.channel.createMessageComponentCollector({ filter: i => i.user.id === interaction.user.id, time: 30_000, max: 1 });
+      col.on('collect', async btn => {
+        await btn.deferUpdate();
+        if (btn.customId === 'leave_cancel') {
+          await interaction.editReply({ content: '✅ Leave cancelled.', components: [] });
+          return;
+        }
+        const result = leaveClan(player);
+        if (result.error) {
+          await interaction.editReply({ content: `❌ ${result.error}`, components: [] });
+          return;
+        }
+        await interaction.editReply({ content: '✅ You have left your clan.', components: [] });
+      });
+      col.on('end', (_, reason) => {
+        if (reason === 'time') interaction.editReply({ components: [] }).catch(() => {});
+      });
     } else if (sub === 'transfer') {
       const target = interaction.options.getUser('user');
       const result = transferLeadership(player, target.id);
@@ -115,6 +141,7 @@ module.exports = {
         return;
       }
       const clan = getClan(membership.clan_id);
+      if (!clan) { await interaction.editReply('❌ Clan not found.'); return; }
       const confirmComp = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('disband_confirm').setLabel(`💥 Disband ${clan.name}`).setStyle(ButtonStyle.Danger),
         new ButtonBuilder().setCustomId('disband_cancel').setLabel('Cancel').setStyle(ButtonStyle.Secondary),

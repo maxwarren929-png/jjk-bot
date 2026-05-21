@@ -37,7 +37,9 @@ module.exports = {
         {
           name: '🏦 Economy',
           value: '`/daily` — Claim daily reward (streak bonus)\n'
-               + '`/shop` — Buy items\n'
+                + '`/shop` — Buy items\n'
+                + '`/shopinfo` — View item details\n'
+                + '`/buy <item>` — Quick-buy an item\n'
                + '`/bank` — Deposit/withdraw/upgrade bank\n'
                + '`/bankrob start/join/launch` — Group bank heist\n'
                + '`/pay <user> <amount>` — Send yen\n'

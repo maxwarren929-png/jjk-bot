@@ -159,20 +159,23 @@ module.exports = {
       const roll = Math.random();
       const success = roll < chance;
 
-      const stolenAmount = Math.floor((target.bank_balance || 0) * STEAL_PCT);
-      const splitAmount = Math.floor(stolenAmount / memberCount);
+      let finalStolenAmount = 0;
+      let finalBankRemaining = 0;
 
       const embed = new EmbedBuilder()
         .setTitle(success ? '💰 Heist Successful!' : '🚔 Heist Failed!')
-        .setColor(success ? 0x2ECC71 : 0xE74C3C)
-        .setDescription(success
-          ? `Escaped with **${stolenAmount} 💰** from **${heist.targetName}**'s bank!`
-          : `The robbery on **${heist.targetName}**'s bank was foiled!`);
+        .setColor(success ? 0x2ECC71 : 0xE74C3C);
 
       if (success) {
         let successNames = [];
         sqlite.transaction(() => {
-          db.update(players).set({ bank_balance: (target.bank_balance || 0) - stolenAmount })
+          const freshTarget = db.select().from(players).where(eq(players.discord_id, heist.targetId)).get();
+          const bankBalance = freshTarget?.bank_balance || 0;
+          finalStolenAmount = Math.floor(bankBalance * STEAL_PCT);
+          const splitAmount = Math.floor(finalStolenAmount / memberCount);
+          finalBankRemaining = bankBalance - finalStolenAmount;
+
+          db.update(players).set({ bank_balance: finalBankRemaining })
             .where(eq(players.discord_id, heist.targetId)).run();
 
           for (const uid of heist.members) {
@@ -184,9 +187,10 @@ module.exports = {
             }
           }
         })();
+        embed.setDescription(`Escaped with **${finalStolenAmount} 💰** from **${heist.targetName}**'s bank!`);
         embed.addFields(
           { name: `🤝 Split (${memberCount} ways)`, value: successNames.join('\n'), inline: false },
-          { name: `🎯 Target's Bank`, value: `${(target.bank_balance || 0) - stolenAmount} 💰`, inline: true },
+          { name: `🎯 Target's Bank`, value: `${finalBankRemaining} 💰`, inline: true },
         );
       } else {
         sqlite.transaction(() => {
@@ -199,6 +203,7 @@ module.exports = {
             }
           }
         })();
+        embed.setDescription(`The robbery on **${heist.targetName}**'s bank was foiled!`);
         embed.addFields({ name: '💸 Fines Paid', value: `${memberCount} members each lost ${FAIL_FINE_PCT * 100}% of wallet (min ${FAIL_FINE_MIN})`, inline: false });
       }
 

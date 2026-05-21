@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { db } = require('../db/index');
+const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 
@@ -47,13 +47,17 @@ module.exports = {
     const hpRestore = Math.floor(player.max_hp * 0.25);
     const ceRestore = Math.floor(player.max_ce * 0.25);
 
-    db.update(players).set({
-      yen: player.yen + totalYen,
-      hp: Math.min(player.hp + hpRestore, player.max_hp),
-      ce: Math.min(player.ce + ceRestore, player.max_ce),
-      last_daily_at: now,
-      daily_streak: streak,
-    }).where(eq(players.discord_id, discordId)).run();
+    sqlite.transaction(() => {
+      const fPlayer = db.select().from(players).where(eq(players.discord_id, discordId)).get();
+      if (!fPlayer) return;
+      db.update(players).set({
+        yen: fPlayer.yen + totalYen,
+        hp: Math.min(fPlayer.hp + hpRestore, fPlayer.max_hp),
+        ce: Math.min(fPlayer.ce + ceRestore, fPlayer.max_ce),
+        last_daily_at: now,
+        daily_streak: streak,
+      }).where(eq(players.discord_id, discordId)).run();
+    })();
 
     const nextDaily = now + DAY_MS;
     const embed = new EmbedBuilder()

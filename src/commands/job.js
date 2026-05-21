@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { db } = require('../db/index');
+const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 
@@ -387,7 +387,11 @@ async function chop(interaction, player) {
 
   data.lumberjack_chops = chops + 1;
   saveJobData(interaction.user.id, data);
-  db.update(players).set({ yen: player.yen + earned, hp: newHp }).where(eq(players.discord_id, interaction.user.id)).run();
+  sqlite.transaction(() => {
+    const fPlayer = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+    if (!fPlayer) return;
+    db.update(players).set({ yen: fPlayer.yen + earned, hp: newHp }).where(eq(players.discord_id, interaction.user.id)).run();
+  })();
 
   const embed = new EmbedBuilder()
     .setTitle('🪓 Chop!')
@@ -534,7 +538,11 @@ async function smelt(interaction, player) {
 
   data.miner_ores = ores;
   saveJobData(interaction.user.id, data);
-  db.update(players).set({ yen: player.yen + value }).where(eq(players.discord_id, interaction.user.id)).run();
+  sqlite.transaction(() => {
+    const fPlayer = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+    if (!fPlayer) return;
+    db.update(players).set({ yen: fPlayer.yen + value }).where(eq(players.discord_id, interaction.user.id)).run();
+  })();
 
   const embed = new EmbedBuilder()
     .setTitle(success ? '🔥 Smelt Success!' : '💥 Smelt Failed!')
@@ -561,7 +569,11 @@ async function sell(interaction, player) {
 
   data.miner_ores = { iron: 0, gold: 0, gem: 0 };
   saveJobData(interaction.user.id, data);
-  db.update(players).set({ yen: player.yen + total }).where(eq(players.discord_id, interaction.user.id)).run();
+  sqlite.transaction(() => {
+    const fPlayer = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+    if (!fPlayer) return;
+    db.update(players).set({ yen: fPlayer.yen + total }).where(eq(players.discord_id, interaction.user.id)).run();
+  })();
 
   const embed = new EmbedBuilder()
     .setTitle('💰 Ores Sold')

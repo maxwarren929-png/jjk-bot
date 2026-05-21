@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { db } = require('../db/index');
+const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 
@@ -74,8 +74,13 @@ async function coinflip(interaction) {
   const emoji = result === 'heads' ? '👑' : '🌿';
   const callEmoji = call === 'heads' ? '👑' : '🌿';
 
-  db.update(players).set({ yen: player.yen + payout })
-    .where(eq(players.discord_id, interaction.user.id)).run();
+  sqlite.transaction(() => {
+    const fPlayer = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+    if (!fPlayer) return;
+    const actualPayout = fPlayer.yen < amount ? -fPlayer.yen : payout;
+    db.update(players).set({ yen: fPlayer.yen + actualPayout })
+      .where(eq(players.discord_id, interaction.user.id)).run();
+  })();
 
   const embed = new EmbedBuilder()
     .setTitle('🪙 Coinflip')
@@ -104,8 +109,13 @@ async function dice(interaction) {
     payout = -amount;
   }
 
-  db.update(players).set({ yen: player.yen + payout })
-    .where(eq(players.discord_id, interaction.user.id)).run();
+  sqlite.transaction(() => {
+    const fPlayer = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+    if (!fPlayer) return;
+    const actualPayout = fPlayer.yen < amount ? -fPlayer.yen : payout;
+    db.update(players).set({ yen: fPlayer.yen + actualPayout })
+      .where(eq(players.discord_id, interaction.user.id)).run();
+  })();
 
   const colors = ['🔴', '🟠', '🟡', '🟢', '🔵', '🟣'];
   const embed = new EmbedBuilder()

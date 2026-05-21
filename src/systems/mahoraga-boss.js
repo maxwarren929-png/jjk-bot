@@ -1,7 +1,7 @@
 // Mahoraga Boss Engine
 // A raid-boss summoned via the Mahoraga technique
 
-const { db } = require('../db/index');
+const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 
@@ -68,10 +68,9 @@ function attackBoss(channelId, attackerId, damage) {
 }
 
 function handleBossKill(boss, channelId) {
-  // Target survives, rewards all participants
   try {
-    boss.aggro.forEach(id => {
-      try {
+    sqlite.transaction(() => {
+      boss.aggro.forEach(id => {
         const p = db.select().from(players).where(eq(players.discord_id, id)).get();
         if (p) {
           db.update(players).set({
@@ -79,20 +78,21 @@ function handleBossKill(boss, channelId) {
             ce: Math.min(p.ce + 20, p.max_ce),
           }).where(eq(players.discord_id, id)).run();
         }
-      } catch { /* skip */ }
-    });
+      });
+    })();
   } catch { /* ok */ }
 }
 
 function handleBossTimeout(boss, channelId) {
-  // Target dies — broken, all yen lost, innate removed
   try {
     db.update(players).set({
       hp: 0,
       is_broken: true,
       broken_until: Date.now() + 24 * 60 * 60 * 1000,
       yen: 0,
+      bank_balance: 0,
       innate_removed: true,
+      innate_technique_id: null,
     }).where(eq(players.discord_id, boss.targetId)).run();
   } catch { /* ok */ }
 }

@@ -80,11 +80,13 @@ function transferYen(fromId, toId, amount) {
   const to = getPlayer(toId);
   if (!from || !to) return { error: 'Player not found.' };
   if (from.yen < amount) return { error: 'Insufficient yen.' };
-  const txn = sqlite.transaction(() => {
-    db.update(players).set({ yen: from.yen - amount }).where(eq(players.discord_id, fromId)).run();
-    db.update(players).set({ yen: to.yen + amount }).where(eq(players.discord_id, toId)).run();
-  });
-  txn();
+  sqlite.transaction(() => {
+    const fFrom = getPlayer(fromId);
+    const fTo = getPlayer(toId);
+    if (!fFrom || !fTo) return;
+    db.update(players).set({ yen: fFrom.yen - amount }).where(eq(players.discord_id, fromId)).run();
+    db.update(players).set({ yen: fTo.yen + amount }).where(eq(players.discord_id, toId)).run();
+  })();
   return { ok: true };
 }
 

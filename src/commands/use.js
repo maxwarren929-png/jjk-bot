@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { db } = require('../db/index');
+const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 const { applyTechnique, buildBar, buildCeBar, getTechsForPlayer } = require('../systems/combat');
@@ -85,35 +85,41 @@ module.exports = {
     }
 
     // Consumable item effects from job_data.__items (consume only after technique succeeds)
-    const actorJob = (() => { try { return JSON.parse(actor.job_data || '{}'); } catch { return {}; } })();
+    const freshActor = db.select().from(players).where(eq(players.discord_id, discordId)).get();
+    const freshTarget = db.select().from(players).where(eq(players.discord_id, targetUser.id)).get();
+    const actorJob = (() => { try { return JSON.parse(freshActor?.job_data || '{}'); } catch { return {}; } })();
     const items = actorJob.__items || [];
     let itemBonusDmg = 0;
-    if (items.includes('BONUS_DAMAGE_20')) {
-      itemBonusDmg = 20;
-      const idx = items.indexOf('BONUS_DAMAGE_20');
-      items.splice(idx, 1);
-      actorJob.__items = items;
-      db.update(players).set({ job_data: JSON.stringify(actorJob) }).where(eq(players.discord_id, discordId)).run();
-    }
     let silencedTarget = false;
-    if (items.includes('SILENCE_NEXT')) {
-      const idx = items.indexOf('SILENCE_NEXT');
-      items.splice(idx, 1);
-      actorJob.__items = items;
-      db.update(players).set({ job_data: JSON.stringify(actorJob) }).where(eq(players.discord_id, discordId)).run();
-      silencedTarget = true;
-    }
+
+    sqlite.transaction(() => {
+      if (items.includes('BONUS_DAMAGE_20')) {
+        itemBonusDmg = 20;
+        const idx = items.indexOf('BONUS_DAMAGE_20');
+        items.splice(idx, 1);
+        actorJob.__items = items;
+        db.update(players).set({ job_data: JSON.stringify(actorJob) }).where(eq(players.discord_id, discordId)).run();
+      }
+      if (items.includes('SILENCE_NEXT')) {
+        const idx = items.indexOf('SILENCE_NEXT');
+        items.splice(idx, 1);
+        actorJob.__items = items;
+        db.update(players).set({ job_data: JSON.stringify(actorJob) }).where(eq(players.discord_id, discordId)).run();
+        silencedTarget = true;
+      }
+      if (silencedTarget) {
+        const targetData = JSON.parse(freshTarget?.job_data || '{}');
+        if (!targetData.__statuses) targetData.__statuses = {};
+        targetData.__statuses.silenced_until = Date.now() + 3600_000; // 1 hour
+        db.update(players).set({ job_data: JSON.stringify(targetData) }).where(eq(players.discord_id, targetUser.id)).run();
+      }
+    })();
+
     if (itemBonusDmg > 0 && result.damage > 0) {
       result.damage += itemBonusDmg;
       result.log += ` 🗡️ *Split Soul Katana +${itemBonusDmg} damage*`;
     }
-
-    // Apply silence effect from Binding Ring (persist on target's DB)
     if (silencedTarget) {
-      const targetData = JSON.parse(target.job_data || '{}');
-      if (!targetData.__statuses) targetData.__statuses = {};
-      targetData.__statuses.silenced_until = Date.now() + 3600_000; // 1 hour
-      db.update(players).set({ job_data: JSON.stringify(targetData) }).where(eq(players.discord_id, targetUser.id)).run();
       result.log += ` 🔇 *Target silenced — next attack will fizzle!*`;
     }
 
