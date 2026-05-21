@@ -19,7 +19,8 @@ module.exports = {
           name: '👤 Profile & Progression',
           value: '`/profile` — View or create your sorcerer profile\n'
                + '`/techniques` — View your techniques\n'
-               + '`/train <type>` — Start a 2-hour training session\n'
+               + '`/train start <type>` — Begin a 2-hour training session\n'
+               + '`/train status` — Check training progress\n'
                + '`/leaderboard` — Top players by wealth, wins, or grade\n'
                + '`/rankup` — Check grade progression requirements',
           inline: false,

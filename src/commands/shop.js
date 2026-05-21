@@ -143,7 +143,8 @@ module.exports = {
 
 async function techniquePicker(interaction, btn, discordId) {
   const player = db.select().from(players).where(eq(players.discord_id, discordId)).get();
-  const owned = JSON.parse(player.unlocked_techniques || '[]');
+  let owned = [];
+  try { owned = JSON.parse(player.unlocked_techniques || '[]'); } catch { owned = []; }
 
   const available = TECHNIQUES.filter(t =>
     t.id !== player.innate_technique_id &&

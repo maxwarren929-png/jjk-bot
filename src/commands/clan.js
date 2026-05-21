@@ -70,14 +70,17 @@ module.exports = {
       if (!clan) { await interaction.editReply('❌ Clan not found.'); return; }
       const members = getMembers(clan.id);
       const leader = members.find(m => m.role === 'Leader');
+      const limit = clan.member_limit || 20;
+      const memberList = members.map(m => `${m.role === 'Leader' ? '👑' : '🔹'} <@${m.player_id}>`).join('\n');
       const embed = new EmbedBuilder()
         .setTitle(`⚔️ ${clan.name}`)
         .setColor(0x3498DB)
         .addFields(
-          { name: 'Leader', value: leader ? `<@${leader.player_id}>` : 'Unknown', inline: true },
-          { name: 'Members', value: `${members.length}/${clan.member_limit}`, inline: true },
-          { name: 'Passive Bonus', value: PASSIVE_DESC[clan.passive_bonus] || clan.passive_bonus, inline: true },
-          { name: 'Invite Only', value: clan.invite_only ? 'Yes' : 'No', inline: true },
+          { name: '👑 Leader', value: leader ? `<@${leader.player_id}>` : 'Unknown', inline: true },
+          { name: '📊 Members', value: `${members.length}/${limit}`, inline: true },
+          { name: '🎁 Passive Bonus', value: PASSIVE_DESC[clan.passive_bonus] || clan.passive_bonus, inline: true },
+          { name: '🔒 Invite Only', value: clan.invite_only ? 'Yes' : 'No', inline: true },
+          { name: '👥 Member List', value: memberList.slice(0, 1024) || 'None', inline: false },
         );
       await interaction.editReply({ embeds: [embed] });
 

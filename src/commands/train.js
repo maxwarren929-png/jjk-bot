@@ -24,36 +24,74 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('train')
     .setDescription('Begin a 2-hour training session.')
-    .addStringOption(opt =>
-      opt.setName('type')
-        .setDescription('What to train')
-        .setRequired(true)
-        .addChoices(
-          { name: 'Meditation (+15 Max CE)', value: 'Meditation' },
-          { name: 'Movies (+20 Technique XP)', value: 'Movies' },
-          { name: 'Physical (+15 Max HP)', value: 'Physical' },
-          { name: 'Manuals (chance to unlock variant)', value: 'Manuals' },
-          { name: 'Isolation (+3 passive CE regen)', value: 'Isolation' },
-        )),
+    .addSubcommand(sub => sub
+      .setName('start')
+      .setDescription('Begin a 2-hour training session.')
+      .addStringOption(opt =>
+        opt.setName('type')
+          .setDescription('What to train')
+          .setRequired(true)
+          .addChoices(
+            { name: 'Meditation (+15 Max CE)', value: 'Meditation' },
+            { name: 'Movies (+20 Technique XP)', value: 'Movies' },
+            { name: 'Physical (+15 Max HP)', value: 'Physical' },
+            { name: 'Manuals (chance to unlock variant)', value: 'Manuals' },
+            { name: 'Isolation (+3 passive CE regen)', value: 'Isolation' },
+          )))
+    .addSubcommand(sub => sub
+      .setName('status')
+      .setDescription('Check your current training status.')),
 
   async execute(interaction) {
     await interaction.deferReply();
+    const sub = interaction.options.getSubcommand();
     const discordId = interaction.user.id;
-    const type = interaction.options.getString('type');
 
-    let player = db.select().from(players).where(eq(players.discord_id, discordId)).get();
+    const player = db.select().from(players).where(eq(players.discord_id, discordId)).get();
     if (!player) {
       await interaction.editReply('❌ No profile found. Run `/profile` first.');
       return;
     }
 
+    if (sub === 'status') {
+      // Check if previous training completed but not claimed
+      const completed = completeTraining(player);
+      if (completed) {
+        const rewardText = completed.type === 'Meditation' ? '+15 Max CE' :
+          completed.type === 'Physical' ? '+15 Max HP' :
+          completed.type === 'Isolation' ? '+3 passive CE regen' : 'claimed';
+        await interaction.editReply(`✅ Training complete! **${completed.type}** finished. Reward: ${rewardText}`);
+        return;
+      }
+
+      if (player.training_until && player.training_until > Date.now()) {
+        const remain = Math.ceil((player.training_until - Date.now()) / 60000);
+        const embed = new EmbedBuilder()
+          .setTitle('🏋️ Training Status')
+          .setColor(0x3498DB)
+          .addFields(
+            { name: 'Regimen', value: player.training_type, inline: true },
+            { name: 'Remaining', value: `**${remain}m**`, inline: true },
+            { name: 'Reward', value: TRAINING_REWARD_TEXT[player.training_type] || 'Unknown', inline: false },
+          );
+        await interaction.editReply({ embeds: [embed] });
+        return;
+      }
+
+      await interaction.editReply('❌ No active training. Start one with `/train start`.');
+      return;
+    }
+
+    const type = interaction.options.getString('type');
+
     // Check if previous training is done
     const completed = completeTraining(player);
     if (completed) {
-      player = db.select().from(players).where(eq(players.discord_id, discordId)).get();
+      // player refetched below
     }
 
-    const result = startTraining(player, type);
+    const fresh = db.select().from(players).where(eq(players.discord_id, discordId)).get();
+    const result = startTraining(fresh, type);
     if (result.error) {
       await interaction.editReply(`❌ ${result.error}`);
       return;

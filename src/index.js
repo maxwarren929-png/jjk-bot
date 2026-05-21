@@ -18,23 +18,32 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 client.commands = new Collection();
 
 // Load commands
+let loadedCmds = 0;
 const commandsPath = path.join(__dirname, 'commands');
 for (const file of fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'))) {
   try {
     const cmd = require(path.join(commandsPath, file));
-    if (cmd.data && cmd.execute) client.commands.set(cmd.data.name, cmd);
+    if (cmd.data && cmd.execute) { client.commands.set(cmd.data.name, cmd); loadedCmds++; }
   } catch (err) {
     console.error(`[${new Date().toISOString()}] ❌ Failed to load command ${file}:`, err.message);
   }
 }
 
 // Load events
+let loadedEvts = 0;
 const eventsPath = path.join(__dirname, 'events');
 for (const file of fs.readdirSync(eventsPath).filter(f => f.endsWith('.js'))) {
-  const event = require(path.join(eventsPath, file));
-  if (event.once) client.once(event.name, (...args) => event.execute(...args, client));
-  else client.on(event.name, (...args) => event.execute(...args, client));
+  try {
+    const event = require(path.join(eventsPath, file));
+    if (event.once) client.once(event.name, (...args) => event.execute(...args, client));
+    else client.on(event.name, (...args) => event.execute(...args, client));
+    loadedEvts++;
+  } catch (err) {
+    console.error(`[${new Date().toISOString()}] ❌ Failed to load event ${file}:`, err.message);
+  }
 }
+
+console.log(`📜 Loaded ${loadedCmds} commands, ${loadedEvts} events`);
 
 // Passive CE regen every 5 minutes
 const { regenAllPlayers, checkAndNotifyCompletedTraining } = require('./systems/training');

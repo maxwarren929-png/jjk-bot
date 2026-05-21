@@ -14,14 +14,16 @@ module.exports = {
       clanCount = db.select().from(clans).all().length;
     } catch { /* db not ready */ }
     const now = new Date();
+    const ping = client.ws.ping;
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`  ✅ Logged in as ${client.user.tag}`);
-    console.log(`  🕐 Launched at  ${now.toLocaleString()}`);
-    console.log(`  🌐 Servers:     ${guildCount}`);
-    console.log(`  📜 Commands:    ${cmdCount}`);
-    console.log(`  👤 Players:     ${playerCount}`);
-    console.log(`  ⚔️ Techniques:  ${techCount}`);
-    console.log(`  🏰 Clans:       ${clanCount}`);
+    console.log(`  🕐 Launched    ${now.toLocaleString()}`);
+    console.log(`  📶 Ping        ${ping}ms`);
+    console.log(`  🌐 Servers     ${guildCount}`);
+    console.log(`  📜 Commands    ${cmdCount}`);
+    console.log(`  👤 Players     ${playerCount}`);
+    console.log(`  ⚔️ Techniques  ${techCount}`);
+    console.log(`  🏰 Clans       ${clanCount}`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   },
 };

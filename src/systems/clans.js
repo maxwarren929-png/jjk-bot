@@ -59,7 +59,8 @@ function inviteToClan(leader, inviteeId) {
   if (!membership || membership.role !== 'Leader') return { error: 'You are not a clan leader.' };
   const clan = getClan(membership.clan_id);
   const members = getMembers(clan.id);
-  if (members.length >= clan.member_limit) return { error: 'Clan is full.' };
+  const limit = clan.member_limit || 20;
+  if (members.length >= limit) return { error: 'Clan is full.' };
 
   db.insert(clan_invites).values({
     clan_id: clan.id,

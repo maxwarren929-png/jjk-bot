@@ -105,7 +105,8 @@ function createAndRegister(id, name, template, customEffects = [], overrides = {
 
 function getRecommendedTechniques(player, count = 3) {
   // Suggest locked variants that the player is closest to unlocking
-  const unlocked = JSON.parse(player.unlocked_techniques || '[]');
+  let unlocked = [];
+  try { unlocked = JSON.parse(player.unlocked_techniques || '[]'); } catch { unlocked = []; }
   const locked = TECHNIQUES.filter(t =>
     t.parent_technique_id === player.innate_technique_id &&
     !unlocked.includes(t.id)
