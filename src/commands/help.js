@@ -45,21 +45,21 @@ module.exports = {
                 + '`/bank` — Deposit/withdraw/upgrade bank (`all: true` for max)\n'
                + '`/bankrob start/join/launch` — Group bank heist\n'
                + '`/pay <user> <amount>` — Send yen\n'
-                + '`/bounty place/list/cancel/check/top` — Place, view, cancel, or top bounties\n'
+                 + '`/bounty place/list/cancel/check/top/placed` — Place, view, cancel, or top bounties\n'
                + '`/gamble coinflip/dice/blackjack` — Test your luck',
           inline: false,
         },
         {
           name: '💼 Jobs',
           value: '`/job apply/quit/info` — Manage your job\n'
-               + '`/job courier/bartender/chop/fish/reel/mine/sell/smelt` — Job actions',
+                + '`/job courier/bartender/chop/fish/reel/mine/ores/sell/smelt` — Job actions',
           inline: false,
         },
-        {
-          name: '⚔️ Clans',
-          value: '`/clan create/invite/join/info/leave/transfer/kick/rename/disband/invites` — Clan management',
-          inline: false,
-        },
+          {
+            name: '⚔️ Clans',
+            value: '`/clan create/invite/join/info/leave/transfer/kick/rename/disband/invites/members/setpassive` — Clan management',
+            inline: false,
+          },
         {
           name: '📦 Inventory',
            value: '`/inventory view/use/sell/give` — Manage and gift your items',

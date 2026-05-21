@@ -190,26 +190,9 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
   }
 
   // Persist to DB
-  const actorUpdate = { ce: actorState.ce };
-  const targetUpdate = { hp: targetState.hp, ce: targetState.ce };
-
   // Handle target death
   let rewards = null;
   if (!skipTargetDamage && targetState.hp <= 0) {
-    targetUpdate.is_broken = true;
-    targetUpdate.hp = 0;
-    targetUpdate.broken_until = Date.now() + 24 * 60 * 60 * 1000;
-    targetUpdate.yen = 0;
-    targetUpdate.bank_balance = 0;
-    if (target.innate_technique_id) {
-      targetUpdate.innate_technique_id = null;
-      targetUpdate.innate_removed = true;
-    }
-
-    actorUpdate.ce = Math.min(actorState.ce + 10, actor.max_ce);
-    actorUpdate.hp = actor.hp;
-
-    // Mark for reward construction; actual yen/wins computed inside txn
     rewards = { winner: actor.discord_id, loser: target.discord_id, yenBonus: 0, yenLoss: 0 };
   }
 
@@ -219,7 +202,6 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
     if (freshActor) {
       const setData = { ce: actorState.ce };
       if (rewards && freshTarget) {
-        // Compute stolen yen from fresh target data
         let stolenYen = freshTarget.yen + (freshTarget.bank_balance || 0);
         const targetClanBonus = getPlayerClanBonus(target.discord_id);
         if (targetClanBonus === 'DEATH_REDUCTION') {
@@ -238,20 +220,17 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
         rewards.yenLoss = stolenYen;
         rewards.yenBonus = yenBonus;
 
-        // Bounty rewards
         const bountyResult = claimBounties(actor.discord_id, target.discord_id);
         if (bountyResult) {
           rewards.bountyTotal = bountyResult.total;
           setData.yen += bountyResult.total;
         }
 
-        // Reputation
         let newRep = freshActor.reputation;
         if (newWins >= 10 && newRep === 'Neutral') newRep = 'Honored';
         if (freshActor.bounty_kills >= 5) newRep = 'Feared';
         if (newRep !== freshActor.reputation) setData.reputation = newRep;
 
-        // Grade up
         const tempPlayer = { ...freshActor, fight_wins: newWins };
         const gradeUp = checkGradeUp(tempPlayer);
         if (gradeUp) {
@@ -262,7 +241,22 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
       db.update(players).set(setData).where(eq(players.discord_id, actor.discord_id)).run();
     }
     if (!skipTargetDamage && freshTarget) {
-      db.update(players).set(targetUpdate).where(eq(players.discord_id, target.discord_id)).run();
+      const targetSet = {
+        hp: targetState.hp,
+        ce: freshTarget.ce,
+      };
+      if (targetState.hp <= 0) {
+        targetSet.is_broken = true;
+        targetSet.hp = 0;
+        targetSet.broken_until = Date.now() + 24 * 60 * 60 * 1000;
+        targetSet.yen = 0;
+        targetSet.bank_balance = 0;
+        if (freshTarget.innate_technique_id) {
+          targetSet.innate_technique_id = null;
+          targetSet.innate_removed = true;
+        }
+      }
+      db.update(players).set(targetSet).where(eq(players.discord_id, target.discord_id)).run();
     }
   })();
 

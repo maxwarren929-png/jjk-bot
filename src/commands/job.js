@@ -105,7 +105,8 @@ module.exports = {
           { name: 'Iron Ore', value: 'iron' },
           { name: 'Gold Ore', value: 'gold' },
           { name: 'Gemstone', value: 'gem' },
-        ))),
+        )))
+    .addSubcommand(sub => sub.setName('ores').setDescription('View your ore inventory (Miner only).')),
   // smelt is handled via buttons from /mine or /sell
 
   async execute(interaction) {
@@ -124,6 +125,7 @@ module.exports = {
     if (sub === 'reel') return reel(interaction, player);
     if (sub === 'mine') return mine(interaction, player);
     if (sub === 'smelt') return smelt(interaction, player);
+    if (sub === 'ores') return ores(interaction, player);
     if (sub === 'sell') return sell(interaction, player);
   },
 };
@@ -593,5 +595,24 @@ async function sell(interaction, player) {
     .setTitle('💰 Ores Sold')
     .setColor(0x2ECC71)
     .setDescription(`Sold all raw ore for **${total} 💰**`);
+  await interaction.editReply({ embeds: [embed] });
+}
+
+async function ores(interaction, player) {
+  if (!await requireJob(interaction, player, 'miner')) return;
+  const data = jobData(player);
+  const ores = data.miner_ores || {};
+  const digs = todayReset(player) ? 0 : (data.miner_digs || 0);
+  const list = ORES.map(o => {
+    const qty = ores[o.id] || 0;
+    return `${o.name}: **${qty}** (${qty * o.baseValue} 💰 raw)`;
+  }).join('\n');
+  const totalOres = Object.values(ores).reduce((a, b) => a + b, 0);
+  const totalValue = ORES.reduce((s, o) => s + (ores[o.id] || 0) * o.baseValue, 0);
+  const embed = new EmbedBuilder()
+    .setTitle('⛏️ Ore Inventory')
+    .setColor(0x95A5A6)
+    .setDescription(list)
+    .setFooter({ text: `Total: ${totalOres} ores worth ${totalValue} 💰 | Digs: ${digs}/10` });
   await interaction.editReply({ embeds: [embed] });
 }

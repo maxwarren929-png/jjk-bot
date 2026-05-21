@@ -81,7 +81,9 @@ module.exports = {
           newActorYen = (fActor?.yen || 0) - actualFine;
           newTargetYen = target.yen;
         })();
-      } catch { /* ok */ }
+      } catch (err) {
+        console.error(`[${new Date().toISOString()}] rob.js: failure txn failed — ${err.message}`);
+      }
       embed.setDescription(`Got caught! Paid **${actualFine} 💰** in fines (${FAIL_FINE_PCT * 100}% of ${failStealAmount} 💰 attempted steal).`);
     }
 

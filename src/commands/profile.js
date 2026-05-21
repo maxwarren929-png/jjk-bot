@@ -3,7 +3,7 @@ const { db } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 const { assignInnate, getTechniqueById } = require('../systems/techniques');
-const { getMembership, getClan, getPlayerClanBonus } = require('../systems/clans');
+const { getMembership, getClan, getMembers, getPlayerClanBonus } = require('../systems/clans');
 const { buildBar, buildCeBar } = require('../systems/combat');
 
 const PASSIVE_DESC = {
@@ -73,6 +73,7 @@ module.exports = {
     const innate = innateDead ? null : getTechniqueById(player.innate_technique_id);
     const membership = getMembership(discordId);
     const clan = membership ? getClan(membership.clan_id) : null;
+    const clanMemberCount = clan ? getMembers(clan.id).length : 0;
 
     const hpBar = buildBar(player.hp, player.max_hp, '🟥', '⬛', 10);
     const ceBar = buildCeBar(player.ce, player.max_ce);
@@ -93,7 +94,7 @@ module.exports = {
           value: innate ? `**${innate.name}**\n${innate.description}` : innateDead ? '~~Destroyed~~' : 'None',
           inline: false,
         },
-        { name: '⚔️ Clan', value: clan ? `**${clan.name}**\n${PASSIVE_DESC[clan.passive_bonus] || clan.passive_bonus}` : 'Clanless', inline: true },
+        { name: '⚔️ Clan', value: clan ? `**${clan.name}** (${clanMemberCount} members)\n${PASSIVE_DESC[clan.passive_bonus] || clan.passive_bonus}` : 'Clanless', inline: true },
         { name: '🎭 Reputation', value: player.reputation, inline: true },
         { name: '💜 CE / 5min', value: `${player.is_broken ? 2 : 5}${getPlayerClanBonus(discordId) === 'CE_REGEN' ? ' *+10% clan bonus*' : ''}`, inline: true },
         { name: '📅 Sorcerer since', value: `<t:${Math.floor(player.created_at / 1000)}:D>`, inline: false },

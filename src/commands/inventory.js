@@ -151,7 +151,9 @@ async function giveItem(interaction) {
     giverJob.__items = giverItems;
     db.update(players).set({ job_data: JSON.stringify(giverJob) }).where(eq(players.discord_id, interaction.user.id)).run();
 
-    const recvJob = (() => { try { return JSON.parse(target.job_data || '{}'); } catch { return {}; } })();
+    const recv = db.select().from(players).where(eq(players.discord_id, targetUser.id)).get();
+    if (!recv) return;
+    const recvJob = (() => { try { return JSON.parse(recv.job_data || '{}'); } catch { return {}; } })();
     if (!recvJob.__items) recvJob.__items = [];
     if (!recvJob.__items.includes(itemKey)) recvJob.__items.push(itemKey);
     db.update(players).set({ job_data: JSON.stringify(recvJob) }).where(eq(players.discord_id, targetUser.id)).run();

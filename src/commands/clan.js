@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 const { db } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
-const { createClan, inviteToClan, joinClan, leaveClan, getClanByName, getMembership, getMembers, getClan, transferLeadership, kickFromClan, renameClan, disbandClan, getPendingInvites } = require('../systems/clans');
+const { createClan, inviteToClan, joinClan, leaveClan, getClanByName, getMembership, getMembers, getClan, transferLeadership, kickFromClan, renameClan, disbandClan, getPendingInvites, setPassive, PASSIVE_OPTIONS, PASSIVE_COST } = require('../systems/clans');
 
 const PASSIVE_DESC = {
   CE_REGEN:        '+10% CE regeneration per tick',
@@ -33,7 +33,15 @@ module.exports = {
     .addSubcommand(sub => sub.setName('disband').setDescription('Permanently delete your clan (leader only). All members ejected.'))
     .addSubcommand(sub => sub.setName('invites').setDescription('View pending clan invites (leader only).'))
     .addSubcommand(sub => sub.setName('members').setDescription('View detailed member list with join dates')
-      .addStringOption(o => o.setName('name').setDescription('Clan name').setRequired(true))),
+      .addStringOption(o => o.setName('name').setDescription('Clan name').setRequired(true)))
+    .addSubcommand(sub => sub.setName('setpassive').setDescription('Change your clan passive bonus (leader only, costs 2000 yen).')
+      .addStringOption(o => o.setName('passive').setDescription('New passive bonus').setRequired(true)
+        .addChoices(
+          { name: 'CE_REGEN: +10% CE regen', value: 'CE_REGEN' },
+          { name: 'YEN_BOOST: +10% fight yen', value: 'YEN_BOOST' },
+          { name: 'DAMAGE_BOOST: +5% damage', value: 'DAMAGE_BOOST' },
+          { name: 'DEATH_REDUCTION: -10% death penalty', value: 'DEATH_REDUCTION' },
+        ))),
 
   async execute(interaction) {
     await interaction.deferReply();
@@ -151,6 +159,16 @@ module.exports = {
         .setTitle('📨 Pending Clan Invites')
         .setColor(0x3498DB)
         .setDescription(pending.map(inv => `<@${inv.invitee_id}> — invited <t:${Math.floor(inv.created_at / 1000)}:R>`).join('\n'));
+      await interaction.editReply({ embeds: [embed] });
+    } else if (sub === 'setpassive') {
+      const passiveId = interaction.options.getString('passive');
+      const result = setPassive(player, passiveId);
+      if (result.error) { await interaction.editReply(`❌ ${result.error}`); return; }
+      const embed = new EmbedBuilder()
+        .setTitle('⚔️ Clan Passive Changed')
+        .setColor(0x2ECC71)
+        .setDescription(`**${result.oldPassive}** → **${result.newPassive}** (cost: ${PASSIVE_COST} 💰)`)
+        .addFields({ name: '🎁 New Passive', value: PASSIVE_DESC[result.newPassive] || result.newPassive, inline: false });
       await interaction.editReply({ embeds: [embed] });
     } else if (sub === 'disband') {
       const membership = getMembership(interaction.user.id);

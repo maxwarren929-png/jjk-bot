@@ -75,13 +75,18 @@ module.exports = {
       const myBounties = db.select().from(bounties).where(eq(bounties.target_id, interaction.user.id)).all();
       if (myBounties.length === 0) return interaction.editReply('✅ No bounties on you. You\'re safe... for now.');
       const total = myBounties.reduce((sum, b) => sum + b.amount, 0);
-      const placerIds = [...new Set(myBounties.map(b => b.placed_by_id))];
+      const byPlacer = {};
+      for (const b of myBounties) {
+        if (!byPlacer[b.placed_by_id]) byPlacer[b.placed_by_id] = 0;
+        byPlacer[b.placed_by_id] += b.amount;
+      }
+      const placerList = Object.entries(byPlacer).map(([id, amt]) => `<@${id}> — **${amt.toLocaleString()} 💰**`).join('\n');
       const embed = new EmbedBuilder()
         .setTitle('🎯 Active Bounties on You')
         .setColor(0xE74C3C)
         .setDescription(`**${myBounties.length}** bounty/bounties totalling **${total.toLocaleString()} 💰**`)
         .addFields(
-          { name: '👤 Placers', value: `${placerIds.length} anonymous hunter(s)`, inline: true },
+          { name: '👤 Hunters', value: placerList, inline: false },
           { name: '⚠️ Warning', value: 'If someone defeats you, your killer collects.', inline: false },
         );
       return interaction.editReply({ embeds: [embed] });

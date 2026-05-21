@@ -152,7 +152,8 @@ module.exports = {
         sqlite.transaction(() => {
           const f = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
           if (!f) return;
-          const a = Math.min(actual, f.yen);
+          const maxStore = f.bank_max - (f.bank_balance || 0);
+          const a = Math.min(actual, f.yen, maxStore);
           db.update(players).set({ yen: f.yen - a, bank_balance: (f.bank_balance || 0) + a })
             .where(eq(players.discord_id, interaction.user.id)).run();
         })();

@@ -3,6 +3,7 @@ const { clans, clan_members, clan_invites, players } = require('../db/schema');
 const { eq, and } = require('drizzle-orm');
 
 const CLAN_COST = 500;
+const PASSIVE_COST = 2000;
 const PASSIVE_OPTIONS = ['CE_REGEN', 'YEN_BOOST', 'DAMAGE_BOOST', 'DEATH_REDUCTION'];
 
 function getClan(clanId) {
@@ -205,4 +206,21 @@ function getPendingInvites(clanId) {
   return db.select().from(clan_invites).where(eq(clan_invites.clan_id, clanId)).all();
 }
 
-module.exports = { getClan, getClanByName, getMembership, getMembers, createClan, inviteToClan, joinClan, leaveClan, transferLeadership, kickFromClan, renameClan, disbandClan, getPlayerClanBonus, getPendingInvites };
+function setPassive(leader, passiveId) {
+  const membership = getMembership(leader.discord_id);
+  if (!membership || membership.role !== 'Leader') return { error: 'You are not a clan leader.' };
+  if (!PASSIVE_OPTIONS.includes(passiveId)) return { error: 'Invalid passive bonus.' };
+  const clan = getClan(membership.clan_id);
+  if (clan.passive_bonus === passiveId) return { error: `Your clan already has **${passiveId}** as its passive.` };
+  let result;
+  sqlite.transaction(() => {
+    const fresh = db.select().from(players).where(eq(players.discord_id, leader.discord_id)).get();
+    if (!fresh || fresh.yen < PASSIVE_COST) { result = { error: `Not enough yen. Need **${PASSIVE_COST} 💰**, have **${(fresh?.yen || 0).toLocaleString()} 💰**.` }; return; }
+    db.update(players).set({ yen: fresh.yen - PASSIVE_COST }).where(eq(players.discord_id, leader.discord_id)).run();
+    db.update(clans).set({ passive_bonus: passiveId }).where(eq(clans.id, clan.id)).run();
+    result = { ok: true, oldPassive: clan.passive_bonus, newPassive: passiveId };
+  })();
+  return result;
+}
+
+module.exports = { getClan, getClanByName, getMembership, getMembers, createClan, inviteToClan, joinClan, leaveClan, transferLeadership, kickFromClan, renameClan, disbandClan, getPlayerClanBonus, getPendingInvites, setPassive, PASSIVE_OPTIONS, PASSIVE_COST };
