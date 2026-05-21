@@ -213,7 +213,7 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
     const actorClanBonus = getPlayerClanBonus(actor.discord_id);
     const yenBonus = actorClanBonus === 'YEN_BOOST' ? Math.floor(stolenYen * 0.1) : 0;
     actorUpdate.yen = actor.yen + stolenYen + yenBonus;
-    actorUpdate.ce = Math.min(actor.ce + 10, actor.max_ce);
+    actorUpdate.ce = Math.min(actorState.ce + 10, actor.max_ce);
     actorUpdate.hp = actor.hp;
 
     rewards = { winner: actor.discord_id, loser: target.discord_id, yenLoss: stolenYen, yenBonus };

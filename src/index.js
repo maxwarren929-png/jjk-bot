@@ -47,11 +47,14 @@ console.log(`📜 Loaded ${loadedCmds} commands, ${loadedEvts} events`);
 
 // Passive CE regen every 5 minutes
 const { regenAllPlayers, checkAndNotifyCompletedTraining } = require('./systems/training');
-setInterval(() => regenAllPlayers(), 5 * 60 * 1000);
+setInterval(() => { try { regenAllPlayers(); } catch (e) { console.error(`[${new Date().toISOString()}] ❌ regenAllPlayers error:`, e); } }, 5 * 60 * 1000);
 
 // Training completion check every 30 seconds
-setInterval(() => checkAndNotifyCompletedTraining(client), 30 * 1000);
+setInterval(() => { try { checkAndNotifyCompletedTraining(client); } catch (e) { console.error(`[${new Date().toISOString()}] ❌ checkAndNotifyCompletedTraining error:`, e); } }, 30 * 1000);
 
+process.on('uncaughtException', (err, origin) => {
+  console.error(`[${new Date().toISOString()}] ❌ Uncaught ${origin}:`, err?.stack || err);
+});
 process.on('SIGINT', () => { console.log('\n⚠️  SIGINT received. Shutting down gracefully...'); process.exit(0); });
 process.on('SIGTERM', () => { console.log('\n⚠️  SIGTERM received. Shutting down gracefully...'); process.exit(0); });
 process.on('unhandledRejection', (reason, promise) => {

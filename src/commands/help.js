@@ -19,6 +19,7 @@ module.exports = {
           name: '👤 Profile & Progression',
           value: '`/profile` — View or create your sorcerer profile\n'
                + '`/techniques` — View your techniques\n'
+               + '`/cooldowns` — View all active cooldowns\n'
                + '`/train start <type>` — Begin a 2-hour training session\n'
                + '`/train status` — Check training progress\n'
                + '`/leaderboard` — Top players by wealth, wins, or grade\n'
@@ -51,7 +52,7 @@ module.exports = {
         },
         {
           name: '⚔️ Clans',
-          value: '`/clan create/invite/join/info/leave/transfer` — Clan management',
+          value: '`/clan create/invite/join/info/leave/transfer/kick` — Clan management',
           inline: false,
         },
         {

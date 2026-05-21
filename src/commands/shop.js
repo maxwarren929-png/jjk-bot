@@ -113,8 +113,8 @@ module.exports = {
       }
 
       if (result.needsTechniquePick) {
-        await techniquePicker(interaction, btn, discordId);
         collector.stop();
+        await techniquePicker(interaction, btn, discordId);
         return;
       }
 
@@ -143,6 +143,7 @@ module.exports = {
 
 async function techniquePicker(interaction, btn, discordId) {
   const player = db.select().from(players).where(eq(players.discord_id, discordId)).get();
+  if (!player) { await btn.editReply({ content: '❌ Profile not found. Run `/profile` first.', embeds: [], components: [] }); return; }
   let owned = [];
   try { owned = JSON.parse(player.unlocked_techniques || '[]'); } catch { owned = []; }
 

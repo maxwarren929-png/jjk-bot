@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { db } = require('../db/index');
+const { db, sqlite } = require('../db/index');
 const { players, techniques, clans, clan_members, clan_invites, bounties } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 const { setTechniquesEnabled, isTechniquesEnabled } = require('../systems/techniques-toggle');
@@ -62,11 +62,14 @@ module.exports = {
           return;
         }
 
-        const count = db.delete(players).run();
-        db.delete(clan_members).run();
-        db.delete(clan_invites).run();
-        db.delete(bounties).run();
-        db.delete(clans).run();
+        let count;
+        sqlite.transaction(() => {
+          count = db.delete(players).run();
+          db.delete(clan_members).run();
+          db.delete(clan_invites).run();
+          db.delete(bounties).run();
+          db.delete(clans).run();
+        })();
 
         const embed = new EmbedBuilder()
           .setTitle('💥 Server Reset Complete')

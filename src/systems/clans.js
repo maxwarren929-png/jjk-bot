@@ -34,22 +34,25 @@ function createClan(player, name) {
   if (getClanByName(name)) return { error: 'A clan with that name already exists.' };
 
   const passive = PASSIVE_OPTIONS[Math.floor(Math.random() * PASSIVE_OPTIONS.length)];
-  const result = db.insert(clans).values({
-    name,
-    owner_id: player.discord_id,
-    passive_bonus: passive,
-    created_at: Date.now(),
-  }).returning().get();
+  let result;
+  sqlite.transaction(() => {
+    result = db.insert(clans).values({
+      name,
+      owner_id: player.discord_id,
+      passive_bonus: passive,
+      created_at: Date.now(),
+    }).returning().get();
 
-  db.insert(clan_members).values({
-    clan_id: result.id,
-    player_id: player.discord_id,
-    role: 'Leader',
-    joined_at: Date.now(),
-  }).run();
+    db.insert(clan_members).values({
+      clan_id: result.id,
+      player_id: player.discord_id,
+      role: 'Leader',
+      joined_at: Date.now(),
+    }).run();
 
-  db.update(players).set({ yen: player.yen - CLAN_COST, clan_id: result.id })
-    .where(eq(players.discord_id, player.discord_id)).run();
+    db.update(players).set({ yen: player.yen - CLAN_COST, clan_id: result.id })
+      .where(eq(players.discord_id, player.discord_id)).run();
+  })();
 
   return { ok: true, clan: result };
 }
@@ -83,21 +86,23 @@ function joinClan(player, clanName) {
 
   if (clan.invite_only && !hasInvite) return { error: 'This clan is invite-only.' };
 
-  db.insert(clan_members).values({
-    clan_id: clan.id,
-    player_id: player.discord_id,
-    role: 'Member',
-    joined_at: Date.now(),
-  }).run();
+  sqlite.transaction(() => {
+    db.insert(clan_members).values({
+      clan_id: clan.id,
+      player_id: player.discord_id,
+      role: 'Member',
+      joined_at: Date.now(),
+    }).run();
 
-  db.update(players).set({ clan_id: clan.id })
-    .where(eq(players.discord_id, player.discord_id)).run();
+    db.update(players).set({ clan_id: clan.id })
+      .where(eq(players.discord_id, player.discord_id)).run();
 
-  if (hasInvite) {
-    db.delete(clan_invites)
-      .where(and(eq(clan_invites.clan_id, clan.id), eq(clan_invites.invitee_id, player.discord_id)))
-      .run();
-  }
+    if (hasInvite) {
+      db.delete(clan_invites)
+        .where(and(eq(clan_invites.clan_id, clan.id), eq(clan_invites.invitee_id, player.discord_id)))
+        .run();
+    }
+  })();
 
   return { ok: true, clan };
 }
@@ -107,14 +112,39 @@ function leaveClan(player) {
   if (!membership) return { error: 'You are not in a clan.' };
   if (membership.role === 'Leader') return { error: 'Transfer leadership before leaving.' };
 
-  db.delete(clan_members)
-    .where(and(eq(clan_members.clan_id, membership.clan_id), eq(clan_members.player_id, player.discord_id)))
-    .run();
+  sqlite.transaction(() => {
+    db.delete(clan_members)
+      .where(and(eq(clan_members.clan_id, membership.clan_id), eq(clan_members.player_id, player.discord_id)))
+      .run();
 
-  db.update(players).set({ clan_id: null })
-    .where(eq(players.discord_id, player.discord_id)).run();
+    db.update(players).set({ clan_id: null })
+      .where(eq(players.discord_id, player.discord_id)).run();
+  })();
 
   return { ok: true };
+}
+
+function kickFromClan(leader, targetId) {
+  const membership = getMembership(leader.discord_id);
+  if (!membership || membership.role !== 'Leader') return { error: 'You are not a clan leader.' };
+  if (targetId === leader.discord_id) return { error: 'You cannot kick yourself.' };
+
+  const targetMembership = getMembership(targetId);
+  if (!targetMembership || targetMembership.clan_id !== membership.clan_id) {
+    return { error: 'Target player is not in your clan.' };
+  }
+  if (targetMembership.role === 'Leader') return { error: 'Cannot kick the clan leader. Transfer leadership first.' };
+
+  const clan = getClan(membership.clan_id);
+  sqlite.transaction(() => {
+    db.delete(clan_members)
+      .where(and(eq(clan_members.clan_id, clan.id), eq(clan_members.player_id, targetId)))
+      .run();
+    db.update(players).set({ clan_id: null })
+      .where(eq(players.discord_id, targetId)).run();
+  })();
+
+  return { ok: true, clan, targetId };
 }
 
 function transferLeadership(leader, targetId) {
@@ -141,4 +171,4 @@ function transferLeadership(leader, targetId) {
   return { ok: true, clan };
 }
 
-module.exports = { getClan, getClanByName, getMembership, getMembers, createClan, inviteToClan, joinClan, leaveClan, transferLeadership, getPlayerClanBonus };
+module.exports = { getClan, getClanByName, getMembership, getMembers, createClan, inviteToClan, joinClan, leaveClan, transferLeadership, kickFromClan, getPlayerClanBonus };
