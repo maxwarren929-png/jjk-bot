@@ -1,13 +1,13 @@
 const { db, sqlite } = require('../db/index');
-const { players } = require('../db/schema');
+const { players, bounties } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 const { getTechniqueById, getPlayerTechniques } = require('./techniques');
 const { checkGradeUp } = require('./training');
 const { buildEffectContext, resolveEffects, resolveLegacyStatus } = require('./effects');
 const { executeDiscordActions } = require('./discord-actions');
 const { getDomainMultiplier } = require('./domain-state');
-const { claimBounties } = require('./bounties');
 const { getPlayerClanBonus } = require('./clans');
+const { getEquipmentBonuses } = require('./equipment');
 
 // In-memory cooldown tracking: userId -> { techniqueId -> timestamp }
 const cooldowns = new Map();
@@ -66,13 +66,15 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
   const masteryBonus = masteryCount >= 20 ? 20 : masteryCount >= 15 ? 15 : masteryCount >= 10 ? 10 : masteryCount >= 5 ? 5 : 0;
 
   // Build in-memory combat snapshots (don't persist, just for effect resolution)
+  const actorBonuses = getEquipmentBonuses(actor.discord_id);
+  const targetBonuses = getEquipmentBonuses(target.discord_id);
   const actorState = {
     id: actor.discord_id,
     username: actor.username,
     hp: actor.hp,
-    maxHp: actor.max_hp,
+    maxHp: actor.max_hp + (actorBonuses.bonusMaxHp || 0),
     ce: actor.ce,
-    maxCe: actor.max_ce,
+    maxCe: actor.max_ce + (actorBonuses.bonusMaxCe || 0),
     shield: 0,
     statuses: [],
     cooldowns: {},
@@ -81,9 +83,9 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
     id: target.discord_id,
     username: target.username,
     hp: target.hp,
-    maxHp: target.max_hp,
+    maxHp: target.max_hp + (targetBonuses.bonusMaxHp || 0),
     ce: target.ce,
-    maxCe: target.max_ce,
+    maxCe: target.max_ce + (targetBonuses.bonusMaxCe || 0),
     shield: 0,
     statuses: [],
     cooldowns: {},
@@ -92,20 +94,22 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
   // Deduct CE and apply cooldown (in memory — persisted after DB write succeeds)
   actorState.ce -= tech.ce_cost;
 
-  // Check if actor is silenced (Binding Ring effect — persisted via job_data.__statuses.silenced_until)
-  const actorJobData = (() => { try { return JSON.parse(actor.job_data || '{}'); } catch { return {}; } })();
-  const actorStatuses = actorJobData.__statuses || {};
-  if (actorStatuses.silenced_until && actorStatuses.silenced_until > Date.now()) {
-    delete actorStatuses.silenced_until;
-    actorJobData.__statuses = actorStatuses;
-    sqlite.transaction(() => {
-      const fresh = db.select().from(players).where(eq(players.discord_id, actor.discord_id)).get();
-      if (!fresh) return;
-      const freshJob = (() => { try { return JSON.parse(fresh.job_data || '{}'); } catch { return {}; } })();
-      if (freshJob.__statuses) delete freshJob.__statuses.silenced_until;
-      db.update(players).set({ ce: Math.max(0, fresh.ce - tech.ce_cost), job_data: JSON.stringify(freshJob) }).where(eq(players.discord_id, actor.discord_id)).run();
-    })();
-    return { ok: true, damage: 0, log: `🔇 **${actor.username}** is silenced — the attack fizzled!`, targetHp: targetState.hp, rewards: null, actor: actorState, target: targetState };
+  // Re-fetch to verify silence is still active (data may be stale)
+  const freshActorData = db.select().from(players).where(eq(players.discord_id, actor.discord_id)).get();
+  if (freshActorData) {
+    const freshJob = (() => { try { return JSON.parse(freshActorData.job_data || '{}'); } catch { return {}; } })();
+    const freshStatuses = freshJob.__statuses || {};
+    if (freshStatuses.silenced_until && freshStatuses.silenced_until > Date.now()) {
+      delete freshJob.__statuses;
+      sqlite.transaction(() => {
+        const reFetch = db.select().from(players).where(eq(players.discord_id, actor.discord_id)).get();
+        if (!reFetch) return;
+        const reJob = (() => { try { return JSON.parse(reFetch.job_data || '{}'); } catch { return {}; } })();
+        delete reJob.__statuses;
+        db.update(players).set({ ce: Math.max(0, reFetch.ce - tech.ce_cost), job_data: JSON.stringify(reJob) }).where(eq(players.discord_id, actor.discord_id)).run();
+      })();
+      return { ok: true, damage: 0, log: `🔇 **${actor.username}** is silenced — the attack fizzled!`, targetHp: targetState.hp, rewards: null, actor: actorState, target: targetState };
+    }
   }
 
   // Resolve on-use effects
@@ -157,10 +161,25 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
       logLine += ` 🌟 *Mastery +${masteryDmg}!* `;
     }
 
+    // Equipment weapon bonus
+    const actorBonuses = getEquipmentBonuses(actor.discord_id);
+    if (actorBonuses.bonusDamage > 0) {
+      damage += actorBonuses.bonusDamage;
+      logLine += ` ⚔️ *Weapon +${actorBonuses.bonusDamage}!* `;
+    }
+
     // Black Flash
     if (rollBlackFlash()) {
       damage = Math.floor(damage * 1.5);
       logLine += `✨ **BLACK FLASH!** `;
+    }
+
+    // Equipment armor reduction
+    const targetBonuses = getEquipmentBonuses(target.discord_id);
+    if (targetBonuses.damageReduction > 0) {
+      const reduced = Math.floor(damage * targetBonuses.damageReduction);
+      damage -= reduced;
+      logLine += ` 🛡️ *Armor -${reduced}!* `;
     }
 
     targetState.hp = Math.max(0, targetState.hp - damage);
@@ -259,15 +278,23 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
         rewards.yenLoss = stolenYen;
         rewards.yenBonus = yenBonus;
 
-        const bountyResult = claimBounties(actor.discord_id, target.discord_id);
-        if (bountyResult) {
-          rewards.bountyTotal = bountyResult.total;
-          setData.yen += bountyResult.total;
+        // Inline bounty claim (no nested transaction)
+        const bountyRows = db.select().from(bounties).where(eq(bounties.target_id, target.discord_id)).all();
+        let bountyCount = 0;
+        if (bountyRows.length > 0) {
+          const total = bountyRows.reduce((sum, b) => sum + b.amount, 0);
+          for (const b of bountyRows) {
+            db.delete(bounties).where(eq(bounties.id, b.id)).run();
+          }
+          setData.yen += total;
+          setData.bounty_kills = (freshActor.bounty_kills || 0) + bountyRows.length;
+          rewards.bountyTotal = total;
+          bountyCount = bountyRows.length;
         }
 
         let newRep = freshActor.reputation;
         if (newWins >= 10 && newRep === 'Neutral') newRep = 'Honored';
-        if ((freshActor.bounty_kills || 0) + (bountyResult ? 1 : 0) >= 5) newRep = 'Feared';
+        if ((freshActor.bounty_kills || 0) + bountyCount >= 5) newRep = 'Feared';
         if (newRep !== freshActor.reputation) setData.reputation = newRep;
 
         const tempPlayer = { ...freshActor, fight_wins: newWins };
@@ -288,6 +315,7 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
         targetSet.is_broken = true;
         targetSet.hp = 0;
         targetSet.broken_until = Date.now() + 24 * 60 * 60 * 1000;
+        targetSet.fight_losses = (freshTarget.fight_losses || 0) + 1;
         if (targetClanBonus === 'DEATH_REDUCTION') {
           const savedAmount = Math.floor((freshTarget.yen + (freshTarget.bank_balance || 0)) * 0.1);
           targetSet.yen = Math.min(savedAmount, freshTarget.yen);
@@ -303,12 +331,31 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
       }
       db.update(players).set(targetSet).where(eq(players.discord_id, target.discord_id)).run();
     }
-    // Increment technique mastery
-    if (freshActor) {
-      const actorJob = (() => { try { return JSON.parse(freshActor.job_data || '{}'); } catch { return {}; } })();
+    // Increment technique mastery (re-query to pick up item consumption writes)
+    const masteryFresh = db.select().from(players).where(eq(players.discord_id, actor.discord_id)).get();
+    if (masteryFresh) {
+      const actorJob = (() => { try { return JSON.parse(masteryFresh.job_data || '{}'); } catch { return {}; } })();
       if (!actorJob.__mastery) actorJob.__mastery = {};
       actorJob.__mastery[techniqueId] = (actorJob.__mastery[techniqueId] || 0) + 1;
+      // Preserve any __items that were written by item consumption above
       db.update(players).set({ job_data: JSON.stringify(actorJob) }).where(eq(players.discord_id, actor.discord_id)).run();
+    }
+    // ELO rating update
+    if (!skipTargetDamage && freshTarget && targetState.hp <= 0) {
+      const RATING_K = 32;
+      const actorElo = (() => { try { return JSON.parse(freshActor.job_data || '{}').__elo || 1000; } catch { return 1000; } })();
+      const targetElo = (() => { try { return JSON.parse(freshTarget.job_data || '{}').__elo || 1000; } catch { return 1000; } })();
+      const expected = 1 / (1 + Math.pow(10, (targetElo - actorElo) / 400));
+      const newActorElo = Math.round(actorElo + RATING_K * (1 - expected));
+      const newTargetElo = Math.round(targetElo + RATING_K * (0 - (1 - expected)));
+      const actorJobElo = (() => { try { return JSON.parse(freshActor.job_data || '{}'); } catch { return {}; } })();
+      const targetJobElo = (() => { try { return JSON.parse(freshTarget.job_data || '{}'); } catch { return {}; } })();
+      if (!actorJobElo.__elo) actorJobElo.__elo = 1000;
+      if (!targetJobElo.__elo) targetJobElo.__elo = 1000;
+      actorJobElo.__elo = newActorElo;
+      targetJobElo.__elo = newTargetElo;
+      db.update(players).set({ job_data: JSON.stringify(actorJobElo) }).where(eq(players.discord_id, actor.discord_id)).run();
+      db.update(players).set({ job_data: JSON.stringify(targetJobElo) }).where(eq(players.discord_id, target.discord_id)).run();
     }
     userCDs[techniqueId] = now + tech.cooldown_seconds * 1000;
   })();

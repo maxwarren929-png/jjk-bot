@@ -20,6 +20,8 @@ try { sqlite.exec(`ALTER TABLE players ADD COLUMN job TEXT`); } catch {}
 try { sqlite.exec(`ALTER TABLE players ADD COLUMN job_data TEXT NOT NULL DEFAULT '{}'`); } catch {}
 try { sqlite.exec(`ALTER TABLE clans ADD COLUMN description TEXT NOT NULL DEFAULT ''`); } catch {}
 try { sqlite.exec(`ALTER TABLE clans ADD COLUMN clan_balance INTEGER NOT NULL DEFAULT 0`); } catch {}
+try { sqlite.exec(`ALTER TABLE players ADD COLUMN fight_losses INTEGER NOT NULL DEFAULT 0`); } catch {}
+try { sqlite.exec(`ALTER TABLE players ADD COLUMN last_hunt_at INTEGER`); } catch {}
 
 // Create tables if they don't exist (Drizzle migrate-lite approach)
 sqlite.exec(`
@@ -42,10 +44,12 @@ sqlite.exec(`
     training_until INTEGER,
     training_type TEXT,
     fight_wins INTEGER NOT NULL DEFAULT 0,
+    fight_losses INTEGER NOT NULL DEFAULT 0,
     bounty_kills INTEGER NOT NULL DEFAULT 0,
     last_fight_at INTEGER,
     last_domain_at INTEGER,
     last_robbed_at INTEGER,
+    last_hunt_at INTEGER,
     last_daily_at INTEGER,
     daily_streak INTEGER NOT NULL DEFAULT 0,
     bank_balance INTEGER NOT NULL DEFAULT 0,
@@ -78,6 +82,7 @@ sqlite.exec(`
     member_limit INTEGER NOT NULL DEFAULT 20,
     invite_only INTEGER NOT NULL DEFAULT 0,
     description TEXT NOT NULL DEFAULT '',
+    clan_balance INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL
   );
   CREATE TABLE IF NOT EXISTS clan_members (

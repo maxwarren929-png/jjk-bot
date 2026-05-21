@@ -1,6 +1,6 @@
 const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
-const { eq, lte } = require('drizzle-orm');
+const { eq } = require('drizzle-orm');
 const { getPlayerClanBonus } = require('./clans');
 
 const TRAINING_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours

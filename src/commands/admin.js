@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { db, sqlite } = require('../db/index');
-const { players, techniques, clans, clan_members, clan_invites, bounties } = require('../db/schema');
+const { players, clans, clan_members, clan_invites, bounties } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 const { setTechniquesEnabled, isTechniquesEnabled } = require('../systems/techniques-toggle');
 

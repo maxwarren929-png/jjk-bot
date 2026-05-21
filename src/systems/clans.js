@@ -36,26 +36,31 @@ function createClan(player, name) {
   const passive = PASSIVE_OPTIONS[Math.floor(Math.random() * PASSIVE_OPTIONS.length)];
   let result;
   let error;
-  sqlite.transaction(() => {
-    const freshPlayer = db.select().from(players).where(eq(players.discord_id, player.discord_id)).get();
-    if (!freshPlayer || freshPlayer.yen < CLAN_COST) { error = 'Not enough yen. Clan creation costs 500 💰.'; return; }
-    result = db.insert(clans).values({
-      name,
-      owner_id: player.discord_id,
-      passive_bonus: passive,
-      created_at: Date.now(),
-    }).returning().get();
+  try {
+    sqlite.transaction(() => {
+      const freshPlayer = db.select().from(players).where(eq(players.discord_id, player.discord_id)).get();
+      if (!freshPlayer || freshPlayer.yen < CLAN_COST) { error = 'Not enough yen. Clan creation costs 500 💰.'; return; }
+      result = db.insert(clans).values({
+        name,
+        owner_id: player.discord_id,
+        passive_bonus: passive,
+        created_at: Date.now(),
+      }).returning().get();
 
-    db.insert(clan_members).values({
-      clan_id: result.id,
-      player_id: player.discord_id,
-      role: 'Leader',
-      joined_at: Date.now(),
-    }).run();
+      db.insert(clan_members).values({
+        clan_id: result.id,
+        player_id: player.discord_id,
+        role: 'Leader',
+        joined_at: Date.now(),
+      }).run();
 
-    db.update(players).set({ yen: freshPlayer.yen - CLAN_COST, clan_id: result.id })
-      .where(eq(players.discord_id, player.discord_id)).run();
-  })();
+      db.update(players).set({ yen: freshPlayer.yen - CLAN_COST, clan_id: result.id })
+        .where(eq(players.discord_id, player.discord_id)).run();
+    })();
+  } catch (err) {
+    if (err.message && err.message.includes('UNIQUE')) return { error: 'A clan with that name already exists.' };
+    return { error: 'Failed to create clan. Try again.' };
+  }
 
   if (error) return { error };
   return { ok: true, clan: result };

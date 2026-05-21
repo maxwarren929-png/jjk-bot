@@ -1,4 +1,4 @@
-const { sqliteTable, text, integer, real } = require('drizzle-orm/sqlite-core');
+const { sqliteTable, text, integer } = require('drizzle-orm/sqlite-core');
 
 const players = sqliteTable('players', {
   discord_id: text('discord_id').primaryKey(),
@@ -19,10 +19,12 @@ const players = sqliteTable('players', {
   training_until: integer('training_until'),
   training_type: text('training_type'),
   fight_wins: integer('fight_wins').notNull().default(0),
+  fight_losses: integer('fight_losses').notNull().default(0),
   bounty_kills: integer('bounty_kills').notNull().default(0),
   last_fight_at: integer('last_fight_at'),
   last_domain_at: integer('last_domain_at'),
   last_robbed_at: integer('last_robbed_at'),
+  last_hunt_at: integer('last_hunt_at'),
   last_daily_at: integer('last_daily_at'),
   daily_streak: integer('daily_streak').notNull().default(0),
   bank_balance: integer('bank_balance').notNull().default(0),

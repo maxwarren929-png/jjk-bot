@@ -54,8 +54,9 @@ module.exports = {
         reputation: 'Neutral',
         is_broken: false,
         fight_wins: 0,
+        fight_losses: 0,
         bounty_kills: 0,
-        last_daily_at: Date.now(),
+        last_daily_at: 0,
         created_at: Date.now(),
       }).run();
       player = db.select().from(players).where(eq(players.discord_id, discordId)).get();

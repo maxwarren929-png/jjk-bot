@@ -1,5 +1,5 @@
 const { db } = require('../db/index');
-const { players, techniques } = require('../db/schema');
+const { players } = require('../db/schema');
 const { INNATE_POOL, TECHNIQUES } = require('../data/techniques');
 const { eq } = require('drizzle-orm');
 

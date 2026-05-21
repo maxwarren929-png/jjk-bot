@@ -3,6 +3,8 @@ const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 
+const { EQUIPMENT_ITEMS, SLOTS } = require('../data/equipment');
+const { equipItem, unequipItem, formatEquipmentEmbed } = require('../systems/equipment');
 const { SHOP_CATALOG } = require('../systems/economy');
 
 const ITEM_NAMES = {
@@ -64,6 +66,25 @@ module.exports = {
           { name: '🗡️ Split Soul Katana (+20 damage)', value: 'BONUS_DAMAGE_20' },
           { name: '💜 CE Potion (restore 50 CE)', value: 'CE_RESTORE_50' },
           { name: '🧪 Healing Vial (exit Broken)', value: 'EXIT_BROKEN' },
+        )))
+    .addSubcommand(sub => sub
+      .setName('equip')
+      .setDescription('Equip an item from your inventory.')
+      .addStringOption(opt => opt.setName('item').setDescription('Item to equip').setRequired(true)
+        .addChoices(
+          { name: '🗡️ Cursed Blade (+15 damage)', value: 'CURSED_BLADE' },
+          { name: '👊 Iron Gauntlets (+5 damage)', value: 'IRON_GAUNTLETS' },
+          { name: '🌑 Shadow Cloak (-10% damage)', value: 'SHADOW_CLOAK' },
+          { name: '🔮 Mystic Robe (+50 max CE)', value: 'MYSTIC_ROBE' },
+          { name: '🛡️ Reinforced Vest (+100 max HP)', value: 'REINFORCED_VEST' },
+        )))
+    .addSubcommand(sub => sub
+      .setName('unequip')
+      .setDescription('Unequip an item from a slot.')
+      .addStringOption(opt => opt.setName('slot').setDescription('Slot to unequip').setRequired(true)
+        .addChoices(
+          { name: 'Weapon', value: 'weapon' },
+          { name: 'Armor', value: 'armor' },
         ))),
 
   async execute(interaction) {
@@ -71,6 +92,8 @@ module.exports = {
     if (sub === 'use') return useItem(interaction);
     if (sub === 'sell') return sellItem(interaction);
     if (sub === 'give') return giveItem(interaction);
+    if (sub === 'equip') return equipHandler(interaction);
+    if (sub === 'unequip') return unequipHandler(interaction);
 
     await interaction.deferReply();
     const targetUser = interaction.options.getUser('user') || interaction.user;
@@ -102,6 +125,8 @@ module.exports = {
     }
 
     const equipLines = [];
+    const eqDisplay = formatEquipmentEmbed(targetUser.id);
+    if (eqDisplay) equipLines.push(`**Equipment:**\n${eqDisplay}`);
     if (player.job === 'lumberjack') {
       const axeLevel = jobData.axeLevel || 1;
       const nextCost = axeLevel < 5 ? `Next upgrade: ${300} 💰` : 'MAXED';
@@ -160,6 +185,7 @@ async function giveItem(interaction) {
   const item = ITEM_NAMES[itemKey];
   if (!item) return interaction.editReply('❌ Unknown item.');
 
+  let transferred = false;
   sqlite.transaction(() => {
     const giver = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
     if (!giver) return;
@@ -177,7 +203,10 @@ async function giveItem(interaction) {
     if (!recvJob.__items) recvJob.__items = [];
     if (!recvJob.__items.includes(itemKey)) recvJob.__items.push(itemKey);
     db.update(players).set({ job_data: JSON.stringify(recvJob) }).where(eq(players.discord_id, targetUser.id)).run();
+    transferred = true;
   })();
+
+  if (!transferred) return interaction.editReply('❌ Item not found in your inventory.');
 
   const embed = new EmbedBuilder()
     .setTitle('🎁 Item Given')
@@ -250,5 +279,36 @@ async function useItem(interaction) {
     .setTitle(`✅ Used: ${USEABLE_ITEMS[itemKey].name}`)
     .setColor(0x2ECC71)
     .setDescription(`${resultText} — item consumed.`);
+  await interaction.editReply({ embeds: [embed] });
+}
+
+async function equipHandler(interaction) {
+  await interaction.deferReply();
+  const itemKey = interaction.options.getString('item');
+  const result = equipItem(interaction.user.id, itemKey);
+  if (result.error) return interaction.editReply(`❌ ${result.error}`);
+  const def = EQUIPMENT_ITEMS[itemKey];
+  let msg = `✅ **${def.name}** equipped to **${result.slot}** slot.`;
+  if (result.unequipped) {
+    const oldDef = EQUIPMENT_ITEMS[result.unequipped];
+    msg += ` (${oldDef ? oldDef.name : result.unequipped} moved to inventory.)`;
+  }
+  const embed = new EmbedBuilder()
+    .setTitle('⚔️ Equipment Changed')
+    .setColor(0x9B59B6)
+    .setDescription(`${msg}\n\n${formatEquipmentEmbed(interaction.user.id)}`);
+  await interaction.editReply({ embeds: [embed] });
+}
+
+async function unequipHandler(interaction) {
+  await interaction.deferReply();
+  const slot = interaction.options.getString('slot');
+  const result = unequipItem(interaction.user.id, slot);
+  if (result.error) return interaction.editReply(`❌ ${result.error}`);
+  const def = EQUIPMENT_ITEMS[result.itemKey];
+  const embed = new EmbedBuilder()
+    .setTitle('⚔️ Equipment Changed')
+    .setColor(0x9B59B6)
+    .setDescription(`✅ **${def ? def.name : result.itemKey}** unequipped from **${slot}** slot and returned to inventory.\n\n${formatEquipmentEmbed(interaction.user.id)}`);
   await interaction.editReply({ embeds: [embed] });
 }

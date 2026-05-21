@@ -17,6 +17,13 @@ const SHOP_CATALOG = [
   { id: 'fishing_rod',      name: 'Fishing Rod Upgrade',    cost: 300,  effect: 'UPGRADE_ROD',     description: 'Upgrades your fishing rod by 1 level. Better rod = better catches.' },
   { id: 'lumber_axe',       name: 'Lumber Axe Upgrade',     cost: 300,  effect: 'UPGRADE_AXE',     description: 'Upgrades your lumber axe. Higher level = more yen per chop.' },
   { id: 'forbidden_scroll', name: 'Forbidden Technique Scroll', cost: 5000, effect: 'UNLOCK_ANY',     description: 'Unlocks ANY technique of your choice — regardless of your innate.' },
+
+  // Equipment
+  { id: 'cursed_blade',     name: 'Cursed Blade',             cost: 1000, effect: 'CURSED_BLADE',    description: '🗡️ Weapon: +15 damage on all attacks. Use /inventory equip.' },
+  { id: 'iron_gauntlets',   name: 'Iron Gauntlets',           cost: 400,  effect: 'IRON_GAUNTLETS',  description: '👊 Weapon: +5 damage. Use /inventory equip.' },
+  { id: 'shadow_cloak',     name: 'Shadow Cloak',             cost: 1200, effect: 'SHADOW_CLOAK',     description: '🌑 Armor: -10% incoming damage. Use /inventory equip.' },
+  { id: 'mystic_robe',      name: 'Mystic Robe',             cost: 800,  effect: 'MYSTIC_ROBE',      description: '🔮 Armor: +50 max CE. Use /inventory equip.' },
+  { id: 'reinforced_vest',  name: 'Reinforced Vest',         cost: 1000, effect: 'REINFORCED_VEST',  description: '🛡️ Armor: +100 max HP. Use /inventory equip.' },
 ];
 
 function getPlayer(discordId) {
@@ -81,6 +88,12 @@ function applyShopEffect(player, itemId) {
         }
         case 'UNLOCK_ANY':
           return { ok: true, item, needsTechniquePick: true };
+        default: {
+          const job = safeParse(fresh.job_data);
+          if (!job.__items) job.__items = [];
+          if (!job.__items.includes(item.effect)) job.__items.push(item.effect);
+          update.job_data = JSON.stringify(job);
+        }
       }
 
       db.update(players).set(update).where(eq(players.discord_id, player.discord_id)).run();

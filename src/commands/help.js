@@ -1,7 +1,4 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { db } = require('../db/index');
-const { players } = require('../db/schema');
-const { eq } = require('drizzle-orm');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -19,6 +16,7 @@ module.exports = {
           name: '👤 Profile & Progression',
           value: '`/profile` — View or create your sorcerer profile\n'
                + '`/techniques` — View your techniques with mastery\n'
+               + '`/rank` — View your PvP rating and leaderboard position\n'
                + '`/lastfight` — View your most recent combat result\n'
                + '`/cooldowns` — View all active cooldowns\n'
                + '`/train start <type>` — Begin a 2-hour training session\n'
@@ -33,7 +31,8 @@ module.exports = {
           name: '⚔️ Combat',
           value: '`/use <technique> <target>` — Use a technique on someone\n'
                + '`/domain` — Domain Expansion (Grade 2+, costs 150 CE)\n'
-               + '`/rob <target>` — Try to steal wallet yen (1h cooldown)',
+               + '`/rob <target>` — Try to steal wallet yen (1h cooldown)\n'
+               + '`/hunt` — Hunt cursed spirits for CE, yen, and items (30m cooldown)',
           inline: false,
         },
         {
@@ -43,6 +42,8 @@ module.exports = {
                + '`/shop` — Browse and buy items\n'
                + '`/buy <item> [quantity]` — Quick-buy with bulk support\n'
                + '`/stats` — Server-wide statistics\n'
+               + '`/collection` — Browse all equipment and items\n'
+               + '`/enhance <slot>` — Upgrade equipped gear with CE\n'
                + '`/bank balance/deposit/withdraw/upgrade` — Manage your cursed bank account\n'
                + '`/bankrob start/join/launch` — Group bank heist\n'
                + '`/pay <user> <amount>` — Send yen\n'
@@ -64,9 +65,10 @@ module.exports = {
           inline: false,
         },
         {
-          name: '📦 Inventory',
+          name: '📦 Inventory & Equipment',
           value: '`/inventory view/use/sell/give` — Manage and gift your items\n'
-               + 'New: **HP Potion**, **CE Elixir** — heal HP/CE instantly or store for later',
+               + '`/inventory equip/unequip` — Equip weapons and armor from your inventory\n'
+               + 'Use **HP Potion** & **CE Elixir** to heal instantly. Equip **cursed tools** for combat bonuses.',
           inline: false,
         },
       );
