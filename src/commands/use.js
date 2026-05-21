@@ -147,7 +147,8 @@ module.exports = {
 
     if (result.rewards) {
       const r = result.rewards;
-      let rewardText = `🏆 **${targetUser.username}** is BROKEN. Bank + wallet wiped (${r.yenLoss}💰 taken). Innate technique destroyed. +${r.yenLoss}💰 +10 CE`;
+      let rewardText = `🏆 **${targetUser.username}** is BROKEN. Bank + wallet wiped (${r.yenLoss}💰 stolen). +10 CE`;
+      if (r.bountyTotal) rewardText += `\n💰 **Bounty claimed: +${r.bountyTotal} 💰**`;
       if (r.gradeUp) rewardText += `\n⬆️ **Grade Up!** Advanced to **${r.gradeUp}**`;
       embed.addFields({ name: '💀 Target Defeated', value: rewardText, inline: false });
       embed.setColor(0x000000);

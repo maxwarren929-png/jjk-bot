@@ -6,6 +6,7 @@ const { checkGradeUp } = require('./training');
 const { buildEffectContext, resolveEffects, resolveLegacyStatus } = require('./effects');
 const { executeDiscordActions } = require('./discord-actions');
 const { getDomainMultiplier } = require('./domain-state');
+const { claimBounties } = require('./bounties');
 
 // In-memory cooldown tracking: userId -> { techniqueId -> timestamp }
 const cooldowns = new Map();
@@ -81,6 +82,13 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
   actorState.ce -= tech.ce_cost;
   userCDs[techniqueId] = now + tech.cooldown_seconds * 1000;
 
+  // Check if target is silenced (Binding Ring effect)
+  if (targetState.statuses.includes('🔇 SILENCED')) {
+    targetState.statuses = targetState.statuses.filter(s => s !== '🔇 SILENCED');
+    db.update(players).set({ ce: actorState.ce }).where(eq(players.discord_id, actor.discord_id)).run();
+    return { ok: true, damage: 0, log: `🔇 **${target.username}** was silenced — the attack fizzled!`, targetHp: targetState.hp, rewards: null, actor: actorState, target: targetState };
+  }
+
   // Resolve on-use effects
   const ctx = buildEffectContext(actorState, targetState, null);
   const useResults = resolveEffects(tech, 'onUse', ctx);
@@ -123,6 +131,7 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
 
     targetState.hp = Math.max(0, targetState.hp - damage);
     logLine += `⚔️ **${actor.username}** used **${tech.name}** → **${damage} damage** to **${target.username}** (HP: ${targetState.hp}/${targetState.maxHp})`;
+    logLine += ` 💜 CE: ${actorState.ce}/${actorState.maxCe}`;
   } else {
     logLine += `✨ **${actor.username}** used **${tech.name}**`;
   }
@@ -177,8 +186,10 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
     targetUpdate.broken_until = Date.now() + 24 * 60 * 60 * 1000;
     targetUpdate.yen = 0;
     targetUpdate.bank_balance = 0;
-    targetUpdate.innate_technique_id = null;
-    targetUpdate.innate_removed = true;
+    if (target.innate_technique_id) {
+      targetUpdate.innate_technique_id = null;
+      targetUpdate.innate_removed = true;
+    }
 
     const newWins = actor.fight_wins + 1;
     actorUpdate.fight_wins = newWins;
@@ -187,6 +198,13 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
     actorUpdate.hp = actor.hp;
 
     rewards = { winner: actor.discord_id, loser: target.discord_id, yenLoss: stolenYen };
+
+    // Bounty rewards
+    const bountyResult = claimBounties(actor.discord_id, target.discord_id);
+    if (bountyResult) {
+      rewards.bountyTotal = bountyResult.total;
+      actorUpdate.yen += bountyResult.total;
+    }
 
     // Reputation
     let newRep = actor.reputation;
@@ -203,6 +221,26 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
   db.update(players).set(actorUpdate).where(eq(players.discord_id, actor.discord_id)).run();
   if (!skipTargetDamage) {
     db.update(players).set(targetUpdate).where(eq(players.discord_id, target.discord_id)).run();
+  }
+
+  // Send death notification DM
+  if (rewards && interaction) {
+    interaction.client.users.fetch(target.discord_id).then(targetUser => {
+      if (!targetUser) return;
+      const { EmbedBuilder } = require('discord.js');
+      const deathEmbed = new EmbedBuilder()
+        .setTitle('💀 You have been defeated!')
+        .setColor(0x000000)
+        .setDescription(`**${actor.username}** destroyed you in combat!`)
+        .addFields(
+          { name: '💰 Losses', value: `All yen lost (${rewards.yenLoss} 💰)`, inline: false },
+          { name: '🩸 Status', value: 'You are **Broken** for 24 hours.', inline: false },
+        );
+      if (rewards.bountyTotal) {
+        deathEmbed.addFields({ name: '💰 Bounty Collected', value: `Your bounty of **${rewards.bountyTotal} 💰** was claimed.`, inline: false });
+      }
+      targetUser.send({ embeds: [deathEmbed] }).catch(() => {});
+    }).catch(() => {});
   }
 
   if (interaction && tech) {

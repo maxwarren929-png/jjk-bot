@@ -1,4 +1,15 @@
 require('dotenv').config();
+
+// Validate required env vars
+const requiredEnv = ['DISCORD_TOKEN', 'CLIENT_ID'];
+for (const key of requiredEnv) {
+  if (!process.env[key]) {
+    console.error(`❌ Missing required environment variable: ${key}`);
+    console.error(`   Copy .env.example to .env and fill in the values.`);
+    process.exit(1);
+  }
+}
+
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const fs = require('fs');
 const path = require('path');

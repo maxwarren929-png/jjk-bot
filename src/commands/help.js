@@ -38,6 +38,7 @@ module.exports = {
                + '`/bank` — Deposit/withdraw/upgrade bank\n'
                + '`/bankrob start/join/launch` — Group bank heist\n'
                + '`/pay <user> <amount>` — Send yen\n'
+               + '`/bounty place/list` — Place or view bounties\n'
                + '`/gamble coinflip/dice/blackjack` — Test your luck',
           inline: false,
         },

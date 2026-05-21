@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { db } = require('../db/index');
+const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 
@@ -52,8 +52,10 @@ module.exports = {
       .setColor(success ? 0x2ECC71 : 0xE74C3C);
 
     if (success) {
-      db.update(players).set({ yen: target.yen - stealAmount }).where(eq(players.discord_id, targetUser.id)).run();
-      db.update(players).set({ yen: actor.yen + stealAmount, last_robbed_at: Date.now() }).where(eq(players.discord_id, userId)).run();
+      sqlite.transaction(() => {
+        db.update(players).set({ yen: target.yen - stealAmount }).where(eq(players.discord_id, targetUser.id)).run();
+        db.update(players).set({ yen: actor.yen + stealAmount, last_robbed_at: Date.now() }).where(eq(players.discord_id, userId)).run();
+      })();
       embed.setDescription(`Stole **${stealAmount} 💰** from **${targetUser.username}**'s wallet.`);
     } else {
       const fine = Math.max(10, Math.floor(stealAmount * FAIL_FINE_PCT));
