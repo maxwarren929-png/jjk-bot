@@ -1,4 +1,4 @@
-const { db } = require('../db/index');
+const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq, lte } = require('drizzle-orm');
 const { getPlayerClanBonus } = require('./clans');
@@ -67,11 +67,14 @@ function regenAllPlayers() {
   const allPlayers = db.select().from(players).all();
   for (const p of allPlayers) {
     if (p.ce >= p.max_ce) continue;
-    let regen = p.is_broken ? 2 : 5;
-    const bonus = getPlayerClanBonus(p.discord_id);
-    if (bonus === 'CE_REGEN') regen = Math.floor(regen * 1.1);
-    const newCe = Math.min(p.ce + regen, p.max_ce);
-    db.update(players).set({ ce: newCe }).where(eq(players.discord_id, p.discord_id)).run();
+    sqlite.transaction(() => {
+      const fresh = db.select().from(players).where(eq(players.discord_id, p.discord_id)).get();
+      if (!fresh || fresh.ce >= fresh.max_ce) return;
+      let regen = fresh.is_broken ? 2 : 5;
+      const bonus = getPlayerClanBonus(fresh.discord_id);
+      if (bonus === 'CE_REGEN') regen = Math.floor(regen * 1.1);
+      db.update(players).set({ ce: Math.min(fresh.ce + regen, fresh.max_ce) }).where(eq(players.discord_id, fresh.discord_id)).run();
+    })();
   }
 }
 

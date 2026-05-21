@@ -19,7 +19,9 @@ module.exports = {
       .setDescription('Cancel all your bounties on a target (refunded to your wallet).')
       .addUserOption(o => o.setName('target').setDescription('Who to cancel bounties on').setRequired(true)))
     .addSubcommand(sub => sub.setName('check').setDescription('Check if anyone has placed bounties on you'))
-    .addSubcommand(sub => sub.setName('top').setDescription('View the highest individual bounties.')),
+    .addSubcommand(sub => sub.setName('top').setDescription('View the highest individual bounties.'))
+    .addSubcommand(sub => sub.setName('placed').setDescription('View all bounties placed by a specific player')
+      .addUserOption(o => o.setName('user').setDescription('The player who placed the bounties').setRequired(true))),
 
   async execute(interaction) {
     await interaction.deferReply();
@@ -95,6 +97,21 @@ module.exports = {
         .setDescription(sorted.map((b, i) =>
           `${i + 1}. <@${b.target_id}> — **${b.amount.toLocaleString()} 💰** (by <@${b.placed_by_id}>)`
         ).join('\n'));
+      return interaction.editReply({ embeds: [embed] });
+    }
+
+    if (sub === 'placed') {
+      const targetUser = interaction.options.getUser('user');
+      const theirBounties = db.select().from(bounties).where(eq(bounties.placed_by_id, targetUser.id)).all();
+      if (theirBounties.length === 0) return interaction.editReply(`❌ **${targetUser.username}** hasn't placed any bounties.`);
+      const total = theirBounties.reduce((sum, b) => sum + b.amount, 0);
+      const embed = new EmbedBuilder()
+        .setTitle(`💰 Bounties Placed by ${targetUser.username}`)
+        .setColor(0xF1C40F)
+        .setDescription(theirBounties.map((b, i) =>
+          `${i + 1}. <@${b.target_id}> — **${b.amount.toLocaleString()} 💰**`
+        ).join('\n'))
+        .setFooter({ text: `Total: ${total.toLocaleString()} 💰 across ${theirBounties.length} bounty/bounties` });
       return interaction.editReply({ embeds: [embed] });
     }
   },

@@ -29,13 +29,14 @@ function getMembers(clanId) {
 }
 
 function createClan(player, name) {
-  if (player.yen < CLAN_COST) return { error: `Creating a clan costs **${CLAN_COST}** 💰.` };
   if (getMembership(player.discord_id)) return { error: 'You are already in a clan.' };
   if (getClanByName(name)) return { error: 'A clan with that name already exists.' };
 
   const passive = PASSIVE_OPTIONS[Math.floor(Math.random() * PASSIVE_OPTIONS.length)];
   let result;
   sqlite.transaction(() => {
+    const freshPlayer = db.select().from(players).where(eq(players.discord_id, player.discord_id)).get();
+    if (!freshPlayer || freshPlayer.yen < CLAN_COST) return;
     result = db.insert(clans).values({
       name,
       owner_id: player.discord_id,
@@ -50,8 +51,7 @@ function createClan(player, name) {
       joined_at: Date.now(),
     }).run();
 
-    const freshPlayer = db.select().from(players).where(eq(players.discord_id, player.discord_id)).get();
-    db.update(players).set({ yen: (freshPlayer?.yen || 0) - CLAN_COST, clan_id: result.id })
+    db.update(players).set({ yen: freshPlayer.yen - CLAN_COST, clan_id: result.id })
       .where(eq(players.discord_id, player.discord_id)).run();
   })();
 

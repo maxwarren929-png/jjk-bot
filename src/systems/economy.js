@@ -75,7 +75,9 @@ function applyShopEffect(player, itemId) {
 
       db.update(players).set(update).where(eq(players.discord_id, player.discord_id)).run();
     })();
-  } catch { /* ok */ }
+  } catch (err) {
+    console.error(`[${new Date().toISOString()}] economy.js: applyShopEffect txn failed — ${err.message}`);
+  }
 
   return { ok: true, item };
 }
@@ -94,7 +96,9 @@ function transferYen(fromId, toId, amount) {
       db.update(players).set({ yen: fFrom.yen - amount }).where(eq(players.discord_id, fromId)).run();
       db.update(players).set({ yen: fTo.yen + amount }).where(eq(players.discord_id, toId)).run();
     })();
-  } catch { /* ok */ }
+  } catch (err) {
+    console.error(`[${new Date().toISOString()}] economy.js: transferYen txn failed — ${err.message}`);
+  }
   return result || { ok: true };
 }
 
@@ -121,7 +125,9 @@ function sellItem(player, effectKey) {
         .where(eq(players.discord_id, player.discord_id)).run();
       result = { ok: true, item: item.name, price: sellPrice };
     })();
-  } catch { /* ok */ }
+  } catch (err) {
+    console.error(`[${new Date().toISOString()}] economy.js: sellItem txn failed — ${err.message}`);
+  }
 
   return result || { error: 'Transaction failed. Try again.' };
 }

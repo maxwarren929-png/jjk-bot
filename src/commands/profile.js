@@ -112,6 +112,16 @@ module.exports = {
       embed.addFields({ name: '🏋️ Training', value: `${player.training_type} — **${remainMin}m remaining**`, inline: false });
     }
 
+    const DAY_MS = 86400000;
+    if (player.last_daily_at && Date.now() - player.last_daily_at < DAY_MS) {
+      const remain = player.last_daily_at + DAY_MS - Date.now();
+      const hrs = Math.floor(remain / 3600000);
+      const mins = Math.ceil((remain % 3600000) / 60000);
+      embed.addFields({ name: '📅 Daily', value: `⏳ ${hrs}h ${mins}m remaining`, inline: true });
+    } else {
+      embed.addFields({ name: '📅 Daily', value: '✅ Ready!', inline: true });
+    }
+
     const ROB_COOLDOWN = 3600000;
     if (player.last_robbed_at && Date.now() - player.last_robbed_at < ROB_COOLDOWN) {
       const wait = Math.ceil((ROB_COOLDOWN - (Date.now() - player.last_robbed_at)) / 60000);

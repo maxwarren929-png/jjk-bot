@@ -31,7 +31,9 @@ module.exports = {
     .addSubcommand(sub => sub.setName('rename').setDescription('Rename your clan (leader only)')
       .addStringOption(o => o.setName('name').setDescription('New clan name').setRequired(true)))
     .addSubcommand(sub => sub.setName('disband').setDescription('Permanently delete your clan (leader only). All members ejected.'))
-    .addSubcommand(sub => sub.setName('invites').setDescription('View pending clan invites (leader only).')),
+    .addSubcommand(sub => sub.setName('invites').setDescription('View pending clan invites (leader only).'))
+    .addSubcommand(sub => sub.setName('members').setDescription('View detailed member list with join dates')
+      .addStringOption(o => o.setName('name').setDescription('Clan name').setRequired(true))),
 
   async execute(interaction) {
     await interaction.deferReply();
@@ -88,6 +90,20 @@ module.exports = {
           { name: '🔒 Invite Only', value: clan.invite_only ? 'Yes' : 'No', inline: true },
           { name: '👥 Member List', value: memberList.slice(0, 1024) || 'None', inline: false },
         );
+      await interaction.editReply({ embeds: [embed] });
+
+    } else if (sub === 'members') {
+      const name = interaction.options.getString('name').trim();
+      const clan = getClanByName(name);
+      if (!clan) { await interaction.editReply('❌ Clan not found.'); return; }
+      const members = getMembers(clan.id);
+      if (members.length === 0) { await interaction.editReply('❌ This clan has no members.'); return; }
+      const embed = new EmbedBuilder()
+        .setTitle(`⚔️ ${clan.name} — Members`)
+        .setColor(0x3498DB)
+        .setDescription(members.map(m =>
+          `${m.role === 'Leader' ? '👑' : '🔹'} <@${m.player_id}> — ${m.role} (joined <t:${Math.floor(m.joined_at / 1000)}:R>)`
+        ).join('\n'));
       await interaction.editReply({ embeds: [embed] });
 
     } else if (sub === 'leave') {

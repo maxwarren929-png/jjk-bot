@@ -232,8 +232,10 @@ async function courier(interaction, player) {
     data.courier_until = null;
     data.courier_pay = null;
     saveJobData(interaction.user.id, data);
-    const freshCourier = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
-    db.update(players).set({ yen: (freshCourier?.yen || 0) + pay }).where(eq(players.discord_id, interaction.user.id)).run();
+    sqlite.transaction(() => {
+      const f = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+      if (f) db.update(players).set({ yen: f.yen + pay }).where(eq(players.discord_id, interaction.user.id)).run();
+    })();
     await interaction.editReply(`✅ Previous delivery completed! Earned **${pay} 💰**. You can now take a new one.`);
     return;
   }
@@ -392,13 +394,14 @@ async function chop(interaction, player) {
 
   const axeLvl = data.axeLevel || 1;
   const earned = Math.floor(Math.random() * (axeLvl * 2)) + axeLvl;
-  const newHp = Math.max(1, player.hp - 2);
 
   data.lumberjack_chops = chops + 1;
   saveJobData(interaction.user.id, data);
+  let newHp;
   sqlite.transaction(() => {
     const fPlayer = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
     if (!fPlayer) return;
+    newHp = Math.max(1, fPlayer.hp - 2);
     db.update(players).set({ yen: fPlayer.yen + earned, hp: newHp }).where(eq(players.discord_id, interaction.user.id)).run();
   })();
 
@@ -408,7 +411,7 @@ async function chop(interaction, player) {
     .setDescription(`Found **${earned} 💰**`)
     .addFields(
       { name: '📦 Today', value: `${chops + 1}/20`, inline: true },
-      { name: '❤️ HP', value: `${newHp}/${player.max_hp}`, inline: true },
+      { name: '❤️ HP', value: `${newHp || 0}/${player.max_hp}`, inline: true },
     );
   await interaction.editReply({ embeds: [embed] });
 }

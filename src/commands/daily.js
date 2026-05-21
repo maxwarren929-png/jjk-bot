@@ -57,43 +57,49 @@ module.exports = {
       return interaction.editReply({ embeds: [embed] });
     }
 
-    // claim
-    if (player.last_daily_at && now - player.last_daily_at < DAY_MS) {
-      const next = new Date(player.last_daily_at + DAY_MS);
-      await interaction.editReply(`⏳ Daily already claimed. Next claim: <t:${Math.floor(next / 1000)}:R>`);
-      return;
-    }
-
-    let streak = player.daily_streak || 0;
-    if (player.last_daily_at && now - player.last_daily_at > 2 * DAY_MS) {
-      streak = 0;
-    }
-    streak = Math.min(streak + 1, STREAK_CAP);
-
-    const baseYen = DAILY_YEN[player.grade] || 40;
-    const streakBonus = (streak - 1) * STREAK_BONUS_PER;
-    const totalYen = baseYen + streakBonus;
-
-    const hpRestore = Math.floor(player.max_hp * 0.25);
-    const ceRestore = Math.floor(player.max_ce * 0.25);
-
+    // claim — all logic inside transaction to prevent race
+    let totalYen = 0, streak = 0, hpRestore = 0, ceRestore = 0, base = 0, bonus = 0;
+    let alreadyClaimed = false;
     sqlite.transaction(() => {
       const fPlayer = db.select().from(players).where(eq(players.discord_id, discordId)).get();
       if (!fPlayer) return;
+      if (fPlayer.last_daily_at && Date.now() - fPlayer.last_daily_at < DAY_MS) {
+        alreadyClaimed = true;
+        return;
+      }
+      let s = fPlayer.daily_streak || 0;
+      if (fPlayer.last_daily_at && Date.now() - fPlayer.last_daily_at > 2 * DAY_MS) {
+        s = 0;
+      }
+      s = Math.min(s + 1, STREAK_CAP);
+      base = DAILY_YEN[fPlayer.grade] || 40;
+      bonus = (s - 1) * STREAK_BONUS_PER;
+      const total = base + bonus;
+      const hp = Math.floor(fPlayer.max_hp * 0.25);
+      const ce = Math.floor(fPlayer.max_ce * 0.25);
       db.update(players).set({
-        yen: fPlayer.yen + totalYen,
-        hp: Math.min(fPlayer.hp + hpRestore, fPlayer.max_hp),
-        ce: Math.min(fPlayer.ce + ceRestore, fPlayer.max_ce),
-        last_daily_at: now,
-        daily_streak: streak,
+        yen: fPlayer.yen + total,
+        hp: Math.min(fPlayer.hp + hp, fPlayer.max_hp),
+        ce: Math.min(fPlayer.ce + ce, fPlayer.max_ce),
+        last_daily_at: Date.now(),
+        daily_streak: s,
       }).where(eq(players.discord_id, discordId)).run();
+      totalYen = total;
+      streak = s;
+      hpRestore = hp;
+      ceRestore = ce;
     })();
+
+    if (alreadyClaimed) {
+      const next = new Date(player.last_daily_at + DAY_MS);
+      return interaction.editReply(`⏳ Daily already claimed. Next claim: <t:${Math.floor(next / 1000)}:R>`);
+    }
 
     const nextDaily = now + DAY_MS;
     const embed = new EmbedBuilder()
       .setTitle('📅 Daily Reward')
       .setColor(0xF1C40F)
-      .setDescription(`**${totalYen} 💰** claimed (${baseYen} base + ${streakBonus} streak)`)
+      .setDescription(`**${totalYen} 💰** claimed (${base} base + ${bonus} streak)`)
       .addFields(
         { name: '🔥 Streak', value: `${streak} day${streak > 1 ? 's' : ''}`, inline: true },
         { name: '❤️ HP Restored', value: `+${hpRestore}`, inline: true },

@@ -25,7 +25,8 @@ function placeBounty(placerId, targetId, amount) {
   try {
     txn();
     return { ok: true, amount, targetName: target.username };
-  } catch {
+  } catch (err) {
+    console.error(`[${new Date().toISOString()}] bounties.js: placeBounty txn failed — ${err.message}`);
     return { error: 'Transaction failed. Try again.' };
   }
 }
@@ -61,7 +62,9 @@ function claimBounties(killerId, targetId) {
       }
       result = { total, count: all.length };
     })();
-  } catch { /* ok */ }
+  } catch (err) {
+    console.error(`[${new Date().toISOString()}] bounties.js: claimBounties txn failed — ${err.message}`);
+  }
   return result;
 }
 
@@ -81,7 +84,9 @@ function cancelBounties(placerId, targetId) {
       db.update(players).set({ yen: fresh.yen + total }).where(eq(players.discord_id, placerId)).run();
       result = { total, count: all.length };
     })();
-  } catch { /* ok */ }
+  } catch (err) {
+    console.error(`[${new Date().toISOString()}] bounties.js: cancelBounties txn failed — ${err.message}`);
+  }
   if (!result) return { error: 'You have no bounties on that target.' };
   return { ok: true, total: result.total, count: result.count };
 }

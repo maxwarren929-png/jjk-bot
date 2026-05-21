@@ -86,8 +86,8 @@ module.exports = {
     }
 
     embed.addFields(
-      { name: `${interaction.user.username} 💰`, value: `${newActorYen}`, inline: true },
-      { name: `${targetUser.username} 💰`, value: `${newTargetYen}`, inline: true },
+      { name: `${interaction.user.username} 💰`, value: `${newActorYen ?? 'N/A'}`, inline: true },
+      { name: `${targetUser.username} 💰`, value: `${newTargetYen ?? 'N/A'}`, inline: true },
     );
 
     await interaction.editReply({ embeds: [embed] });

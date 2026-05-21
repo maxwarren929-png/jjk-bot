@@ -4,6 +4,7 @@ const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 const { getCooldowns } = require('../systems/combat');
 const { TECHNIQUES } = require('../data/techniques');
+const { getMembership, getClan } = require('../systems/clans');
 
 const ROB_COOLDOWN_MS = 3600000;
 const DOMAIN_COOLDOWN_MS = 30000;
@@ -66,11 +67,19 @@ module.exports = {
       lines.push('✨ No active cooldowns!');
     }
 
+    const clanName = (() => {
+      const m = getMembership(interaction.user.id);
+      if (m) { const c = getClan(m.clan_id); return c?.name; }
+      return null;
+    })();
+    const footerParts = [`🏦 Bank: ${(player.bank_balance || 0).toLocaleString()} / ${player.bank_max === Infinity ? '♾️' : player.bank_max.toLocaleString()} 💰`];
+    if (clanName) footerParts.push(`⚔️ ${clanName}`);
+
     const embed = new EmbedBuilder()
       .setTitle(`⏳ ${interaction.user.username}'s Cooldowns`)
       .setColor(0x3498DB)
       .setDescription(lines.join('\n\n'))
-      .setFooter({ text: `🏦 Bank: ${(player.bank_balance || 0).toLocaleString()} / ${player.bank_max === Infinity ? '♾️' : player.bank_max.toLocaleString()} 💰` });
+      .setFooter({ text: footerParts.join(' · ') });
 
     await interaction.editReply({ embeds: [embed] });
   },
