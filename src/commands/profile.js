@@ -84,7 +84,8 @@ module.exports = {
         { name: '🩸 HP', value: `${hpBar} ${player.hp}/${player.max_hp}`, inline: false },
         { name: '🟪 CE', value: `${ceBar} ${player.ce}/${player.max_ce}`, inline: false },
         { name: '🏅 Grade', value: `${GRADE_EMOJI[player.grade]} ${player.grade}`, inline: true },
-        { name: '💰 Yen', value: `${player.yen} yen`, inline: true },
+        { name: '💰 Yen', value: `${player.yen.toLocaleString()} 💰`, inline: true },
+        { name: '🏦 Bank', value: `${(player.bank_balance || 0).toLocaleString()} 💰`, inline: true },
         { name: '🏆 Wins', value: `${player.fight_wins}`, inline: true },
         {
           name: '👁️ Innate Technique',

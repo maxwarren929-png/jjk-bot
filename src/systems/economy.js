@@ -2,6 +2,10 @@ const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 
+function safeParse(val) {
+  try { return JSON.parse(val || '{}'); } catch { return {}; }
+}
+
 const SHOP_CATALOG = [
   { id: 'ce_potion',        name: 'CE Potion',              cost: 100,  effect: 'CE_RESTORE_50',   description: 'Stores in inventory. Use `/inventory use` to restore 50 CE.' },
   { id: 'binding_ring',     name: 'Binding Ring',           cost: 200,  effect: 'SILENCE_NEXT',    description: 'Silences the enemy on your next attack, skipping their action.' },
@@ -20,58 +24,59 @@ function getPlayer(discordId) {
 function applyShopEffect(player, itemId) {
   const item = SHOP_CATALOG.find(i => i.id === itemId);
   if (!item) return { error: 'Item not found.' };
-  if (player.yen < item.cost) return { error: `Not enough yen. Need **${item.cost}** 💰, have **${player.yen}** 💰.` };
 
-  const update = { yen: player.yen - item.cost };
+  try {
+    sqlite.transaction(() => {
+      const fresh = db.select().from(players).where(eq(players.discord_id, player.discord_id)).get();
+      if (!fresh) return;
+      if (fresh.yen < item.cost) return { error: `Not enough yen. Need **${item.cost}** 💰, have **${fresh.yen}** 💰.` };
 
-  switch (item.effect) {
-    case 'CE_RESTORE_50':
-    case 'EXIT_BROKEN':
-    case 'SILENCE_NEXT':
-    case 'BONUS_DAMAGE_20': {
-      const job = JSON.parse(player.job_data || '{}');
-      if (!job.__items) job.__items = [];
-      if (!job.__items.includes(item.effect)) job.__items.push(item.effect);
-      update.job_data = JSON.stringify(job);
-      break;
-    }
-    case 'REROLL_INNATE': {
-      const { assignInnate } = require('./techniques');
-      let newId;
-      sqlite.transaction(() => {
-        update.unlocked_techniques = '[]';
-        update.innate_removed = false;
-        db.update(players).set(update).where(eq(players.discord_id, player.discord_id)).run();
-        newId = assignInnate(player.discord_id);
-      })();
-      return { ok: true, item, newTechniqueId: newId };
-    }
-    case 'UPGRADE_ROD': {
-      const rodData = JSON.parse(player.job_data || '{}');
-      const currentRod = rodData.rodLevel || 1;
-      if (currentRod >= 5) return { error: 'Rod is already max level (5).' };
-      rodData.rodLevel = currentRod + 1;
-      update.job_data = JSON.stringify(rodData);
-      update.yen = player.yen - item.cost;
-      break;
-    }
-    case 'UPGRADE_AXE': {
-      const axeData = JSON.parse(player.job_data || '{}');
-      const currentAxe = axeData.axeLevel || 1;
-      if (currentAxe >= 5) return { error: 'Axe is already max level (5).' };
-      axeData.axeLevel = currentAxe + 1;
-      update.job_data = JSON.stringify(axeData);
-      update.yen = player.yen - item.cost;
-      break;
-    }
-    case 'UNLOCK_ANY': {
+      const update = { yen: fresh.yen - item.cost };
+
+      switch (item.effect) {
+        case 'CE_RESTORE_50':
+        case 'EXIT_BROKEN':
+        case 'SILENCE_NEXT':
+        case 'BONUS_DAMAGE_20': {
+          const job = safeParse(fresh.job_data);
+          if (!job.__items) job.__items = [];
+          if (!job.__items.includes(item.effect)) job.__items.push(item.effect);
+          update.job_data = JSON.stringify(job);
+          break;
+        }
+        case 'REROLL_INNATE': {
+          const { assignInnate } = require('./techniques');
+          update.unlocked_techniques = '[]';
+          update.innate_removed = false;
+          db.update(players).set(update).where(eq(players.discord_id, player.discord_id)).run();
+          const newId = assignInnate(player.discord_id);
+          return { ok: true, item, newTechniqueId: newId };
+        }
+        case 'UPGRADE_ROD': {
+          const rodData = safeParse(fresh.job_data);
+          const currentRod = rodData.rodLevel || 1;
+          if (currentRod >= 5) return { error: 'Rod is already max level (5).' };
+          rodData.rodLevel = currentRod + 1;
+          update.job_data = JSON.stringify(rodData);
+          break;
+        }
+        case 'UPGRADE_AXE': {
+          const axeData = safeParse(fresh.job_data);
+          const currentAxe = axeData.axeLevel || 1;
+          if (currentAxe >= 5) return { error: 'Axe is already max level (5).' };
+          axeData.axeLevel = currentAxe + 1;
+          update.job_data = JSON.stringify(axeData);
+          break;
+        }
+        case 'UNLOCK_ANY':
+          // handled by caller after transaction
+          break;
+      }
+
       db.update(players).set(update).where(eq(players.discord_id, player.discord_id)).run();
-      return { ok: true, item, needsTechniquePick: true };
-    }
+    })();
+  } catch { /* ok */ }
 
-  }
-
-  db.update(players).set(update).where(eq(players.discord_id, player.discord_id)).run();
   return { ok: true, item };
 }
 
@@ -97,20 +102,26 @@ function sellItem(player, effectKey) {
   const item = SHOP_CATALOG.find(i => i.effect === effectKey);
   if (!item) return { error: 'Item cannot be sold.' };
 
-  const data = JSON.parse(player.job_data || '{}');
-  const items = data.__items || [];
-  const idx = items.indexOf(effectKey);
-  if (idx === -1) return { error: `You don't have a **${item.name}** to sell.` };
-
   const sellPrice = Math.floor(item.cost * 0.5);
-  items.splice(idx, 1);
-  data.__items = items;
-  db.update(players).set({
-    yen: player.yen + sellPrice,
-    job_data: JSON.stringify(data),
-  }).where(eq(players.discord_id, player.discord_id)).run();
+  let result = null;
 
-  return { ok: true, item: item.name, price: sellPrice };
+  try {
+    sqlite.transaction(() => {
+      const fresh = db.select().from(players).where(eq(players.discord_id, player.discord_id)).get();
+      if (!fresh) { result = { error: 'Profile not found.' }; return; }
+      const data = safeParse(fresh.job_data);
+      const items = data.__items || [];
+      const idx = items.indexOf(effectKey);
+      if (idx === -1) { result = { error: `You don't have a **${item.name}** to sell.` }; return; }
+      items.splice(idx, 1);
+      data.__items = items;
+      db.update(players).set({ yen: fresh.yen + sellPrice, job_data: JSON.stringify(data) })
+        .where(eq(players.discord_id, player.discord_id)).run();
+      result = { ok: true, item: item.name, price: sellPrice };
+    })();
+  } catch { /* ok */ }
+
+  return result || { error: 'Transaction failed. Try again.' };
 }
 
 module.exports = { SHOP_CATALOG, applyShopEffect, transferYen, getPlayer, sellItem, CONSUMABLE_EFFECTS };

@@ -40,7 +40,7 @@ module.exports = {
       .addFields(
         { name: '💰 Price', value: `${item.cost} 💰`, inline: true },
         { name: '♻️ Sell Price', value: `${Math.floor(item.cost * 0.5)} 💰`, inline: true },
-        { name: '🏷️ Type', value: item.type, inline: true },
+        { name: '🏷️ Type', value: item.type || item.effect, inline: true },
         { name: '⚡ Effect', value: effectLabels[item.effect] || item.effect, inline: false },
       );
 

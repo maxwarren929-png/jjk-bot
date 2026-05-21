@@ -67,8 +67,8 @@ function getRodLevel(player) {
 }
 
 function todayReset(player) {
-  if (!player.last_daily_at) return true;
-  const last = new Date(player.last_daily_at);
+  const ref = player.last_daily_at || player.created_at || Date.now();
+  const last = new Date(ref);
   const now = new Date();
   return last.getDate() !== now.getDate() || last.getMonth() !== now.getMonth() || last.getFullYear() !== now.getFullYear();
 }
@@ -257,9 +257,11 @@ async function courier(interaction, player) {
           const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
           db.update(players).set({ yen: (fresh?.yen || 0) + pay }).where(eq(players.discord_id, interaction.user.id)).run();
         })();
-        try { await interaction.channel.send(`📦 **${interaction.user.username}** completed their delivery! **+${pay} 💰**`); } catch { /* ok */ }
+        try { await interaction.channel.send(`📦 **${interaction.user.username}** completed their delivery! **+${pay} 💰**`); } catch (err) { console.error(`[${new Date().toISOString()}] job.js: courier announce failed — ${err.message}`); }
       }
-    } catch { /* ok */ }
+    } catch (err) {
+      console.error(`[${new Date().toISOString()}] job.js: courier timeout handler failed — ${err.message}`);
+    }
   }, duration);
 
   const embed = new EmbedBuilder()

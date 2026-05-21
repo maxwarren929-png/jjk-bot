@@ -181,8 +181,11 @@ async function renderBlackjack(interaction, game, gameOver) {
     embed.setDescription(result);
     embed.addFields({ name: 'Result', value: payout >= 0 ? `+${payout} 💰` : `${payout} 💰`, inline: true });
 
-    const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
-    db.update(players).set({ yen: Math.max(0, fresh.yen + payout) }).where(eq(players.discord_id, interaction.user.id)).run();
+    sqlite.transaction(() => {
+      const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+      if (!fresh) return;
+      db.update(players).set({ yen: Math.max(0, fresh.yen + payout) }).where(eq(players.discord_id, interaction.user.id)).run();
+    })();
 
     await interaction.editReply({ embeds: [embed], components: [] });
     return;

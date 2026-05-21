@@ -18,7 +18,8 @@ module.exports = {
       .setName('cancel')
       .setDescription('Cancel all your bounties on a target (refunded to your wallet).')
       .addUserOption(o => o.setName('target').setDescription('Who to cancel bounties on').setRequired(true)))
-    .addSubcommand(sub => sub.setName('check').setDescription('Check if anyone has placed bounties on you')),
+    .addSubcommand(sub => sub.setName('check').setDescription('Check if anyone has placed bounties on you'))
+    .addSubcommand(sub => sub.setName('top').setDescription('View the highest individual bounties.')),
 
   async execute(interaction) {
     await interaction.deferReply();
@@ -81,6 +82,19 @@ module.exports = {
           { name: '👤 Placers', value: `${placerIds.length} anonymous hunter(s)`, inline: true },
           { name: '⚠️ Warning', value: 'If someone defeats you, your killer collects.', inline: false },
         );
+      return interaction.editReply({ embeds: [embed] });
+    }
+
+    if (sub === 'top') {
+      const all = db.select().from(bounties).all();
+      if (all.length === 0) return interaction.editReply('❌ No bounties have been placed yet.');
+      const sorted = all.sort((a, b) => b.amount - a.amount).slice(0, 10);
+      const embed = new EmbedBuilder()
+        .setTitle('🏆 Top Bounties')
+        .setColor(0xF1C40F)
+        .setDescription(sorted.map((b, i) =>
+          `${i + 1}. <@${b.target_id}> — **${b.amount.toLocaleString()} 💰** (by <@${b.placed_by_id}>)`
+        ).join('\n'));
       return interaction.editReply({ embeds: [embed] });
     }
   },

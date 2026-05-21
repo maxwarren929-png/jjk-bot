@@ -84,7 +84,7 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
   userCDs[techniqueId] = now + tech.cooldown_seconds * 1000;
 
   // Check if actor is silenced (Binding Ring effect — persisted via job_data.__statuses.silenced_until)
-  const actorJobData = JSON.parse(actor.job_data || '{}');
+  const actorJobData = (() => { try { return JSON.parse(actor.job_data || '{}'); } catch { return {}; } })();
   const actorStatuses = actorJobData.__statuses || {};
   if (actorStatuses.silenced_until && actorStatuses.silenced_until > Date.now()) {
     delete actorStatuses.silenced_until;
@@ -241,8 +241,13 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
   }
 
   sqlite.transaction(() => {
-    db.update(players).set(actorUpdate).where(eq(players.discord_id, actor.discord_id)).run();
-    if (!skipTargetDamage) {
+    const freshActor = db.select().from(players).where(eq(players.discord_id, actor.discord_id)).get();
+    const freshTarget = db.select().from(players).where(eq(players.discord_id, target.discord_id)).get();
+    if (freshActor) db.update(players).set({
+      ...actorUpdate,
+      yen: (freshActor.yen || 0) + (actorUpdate.yen - (actor.yen || 0)),
+    }).where(eq(players.discord_id, actor.discord_id)).run();
+    if (!skipTargetDamage && freshTarget) {
       db.update(players).set(targetUpdate).where(eq(players.discord_id, target.discord_id)).run();
     }
   })();

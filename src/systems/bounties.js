@@ -5,8 +5,8 @@ const { eq, and } = require('drizzle-orm');
 function placeBounty(placerId, targetId, amount) {
   const placer = db.select().from(players).where(eq(players.discord_id, placerId)).get();
   if (!placer) return { error: 'You need a profile first.' };
-  if (placer.yen < amount) return { error: `Not enough yen. Need **${amount} 💰**, have **${placer.yen} 💰**.` };
   if (placerId === targetId) return { error: 'You cannot place a bounty on yourself.' };
+  if (placer.yen < amount) return { error: `Not enough yen. Need **${amount} 💰**, have **${placer.yen} 💰**.` };
 
   const target = db.select().from(players).where(eq(players.discord_id, targetId)).get();
   if (!target) return { error: 'Target has no profile.' };
@@ -43,46 +43,47 @@ function listBounties() {
 }
 
 function claimBounties(killerId, targetId) {
-  const all = db.select().from(bounties).where(eq(bounties.target_id, targetId)).all();
-  if (all.length === 0) return null;
-
-  const total = all.reduce((sum, b) => sum + b.amount, 0);
-
-  const del = sqlite.transaction(() => {
-    for (const b of all) {
-      db.delete(bounties).where(eq(bounties.id, b.id)).run();
-    }
-    const killer = db.select().from(players).where(eq(players.discord_id, killerId)).get();
-    if (killer) {
-      db.update(players).set({
-        yen: killer.yen + total,
-        bounty_kills: (killer.bounty_kills || 0) + 1,
-      }).where(eq(players.discord_id, killerId)).run();
-    }
-  });
-  del();
-
-  return { total, count: all.length };
+  let result = null;
+  try {
+    sqlite.transaction(() => {
+      const all = db.select().from(bounties).where(eq(bounties.target_id, targetId)).all();
+      if (all.length === 0) return;
+      const total = all.reduce((sum, b) => sum + b.amount, 0);
+      for (const b of all) {
+        db.delete(bounties).where(eq(bounties.id, b.id)).run();
+      }
+      const killer = db.select().from(players).where(eq(players.discord_id, killerId)).get();
+      if (killer) {
+        db.update(players).set({
+          yen: killer.yen + total,
+          bounty_kills: (killer.bounty_kills || 0) + 1,
+        }).where(eq(players.discord_id, killerId)).run();
+      }
+      result = { total, count: all.length };
+    })();
+  } catch { /* ok */ }
+  return result;
 }
 
 function cancelBounties(placerId, targetId) {
-  const all = db.select().from(bounties)
-    .where(and(eq(bounties.placed_by_id, placerId), eq(bounties.target_id, targetId)))
-    .all();
-  if (all.length === 0) return { error: 'You have no bounties on that target.' };
-
-  const total = all.reduce((sum, b) => sum + b.amount, 0);
-
-  const txn = sqlite.transaction(() => {
-    const fresh = db.select().from(players).where(eq(players.discord_id, placerId)).get();
-    for (const b of all) {
-      db.delete(bounties).where(eq(bounties.id, b.id)).run();
-    }
-    db.update(players).set({ yen: fresh.yen + total }).where(eq(players.discord_id, placerId)).run();
-  });
-  txn();
-
-  return { ok: true, total, count: all.length };
+  let result = null;
+  try {
+    sqlite.transaction(() => {
+      const all = db.select().from(bounties)
+        .where(and(eq(bounties.placed_by_id, placerId), eq(bounties.target_id, targetId)))
+        .all();
+      if (all.length === 0) return;
+      const total = all.reduce((sum, b) => sum + b.amount, 0);
+      const fresh = db.select().from(players).where(eq(players.discord_id, placerId)).get();
+      for (const b of all) {
+        db.delete(bounties).where(eq(bounties.id, b.id)).run();
+      }
+      db.update(players).set({ yen: fresh.yen + total }).where(eq(players.discord_id, placerId)).run();
+      result = { total, count: all.length };
+    })();
+  } catch { /* ok */ }
+  if (!result) return { error: 'You have no bounties on that target.' };
+  return { ok: true, total: result.total, count: result.count };
 }
 
 module.exports = { placeBounty, listBounties, claimBounties, cancelBounties };

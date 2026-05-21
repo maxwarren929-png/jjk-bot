@@ -24,7 +24,7 @@ module.exports = {
                 + '`/train status` — Check training progress\n'
                 + '`/train cancel` — Cancel current training (no refund)\n'
                 + '`/reset` — Permanently delete your profile and start over\n'
-               + '`/leaderboard` — Top players by wealth, wins, or grade\n'
+                 + '`/leaderboard` — Top players by wealth, wins, grade, or bounty kills\n'
                + '`/rankup` — Check grade progression requirements',
           inline: false,
         },
@@ -44,7 +44,7 @@ module.exports = {
                 + '`/bank` — Deposit/withdraw/upgrade bank (`all: true` for max)\n'
                + '`/bankrob start/join/launch` — Group bank heist\n'
                + '`/pay <user> <amount>` — Send yen\n'
-               + '`/bounty place/list/cancel` — Place, view, or cancel bounties (refund)\n'
+                + '`/bounty place/list/cancel/check/top` — Place, view, cancel, or top bounties\n'
                + '`/gamble coinflip/dice/blackjack` — Test your luck',
           inline: false,
         },

@@ -93,7 +93,8 @@ module.exports = {
         ],
         reason: 'Domain Expansion',
       });
-    } catch {
+    } catch (err) {
+      console.error(`[${new Date().toISOString()}] domain.js: Failed to create domain channel — ${err.message}`);
       // Fall back to posting in the current channel
     }
 

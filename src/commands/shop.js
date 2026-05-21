@@ -212,6 +212,10 @@ async function techniquePicker(interaction, btn, discordId) {
       col.stop();
 
       const tech = TECHNIQUES.find(t => t.id === techId);
+      if (!tech) {
+        await i.editReply({ content: '❌ Technique not found.', embeds: [], components: [] });
+        return;
+      }
       const doneEmbed = new EmbedBuilder()
         .setTitle('✅ Technique Unlocked!')
         .setColor(0x2ECC71)

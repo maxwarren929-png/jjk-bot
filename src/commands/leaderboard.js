@@ -16,6 +16,7 @@ module.exports = {
           { name: '💰 Wealth (yen + bank)', value: 'wealth' },
           { name: '🏆 Fight Wins', value: 'wins' },
           { name: '🏅 Grade', value: 'grade' },
+          { name: '☠️ Bounty Kills', value: 'bounty' },
         )),
 
   async execute(interaction) {
@@ -46,6 +47,16 @@ module.exports = {
         .sort((a, b) => b.gradeIdx - a.gradeIdx || b.wins - a.wins)
         .slice(0, 10);
       formatRow = (r, i) => `${medal(i)} <@${r.id}> — **${r.grade}** (${r.wins} win${r.wins !== 1 ? 's' : ''})\n`;
+    } else if (type === 'bounty') {
+      title = '☠️ Bounty Hunter Leaderboard';
+      color = 0x2C3E50;
+      ranked = all
+        .map(p => ({ id: p.discord_id, name: p.username, kills: p.bounty_kills || 0 }))
+        .sort((a, b) => b.kills - a.kills)
+        .slice(0, 10)
+        .filter(r => r.kills > 0);
+      if (ranked.length === 0) return interaction.editReply('❌ No bounty kills yet.');
+      formatRow = (r, i) => `${medal(i)} <@${r.id}> — **${r.kills}** bounty kill${r.kills !== 1 ? 's' : ''}\n`;
     } else {
       title = '💰 Wealth Leaderboard';
       color = 0xF1C40F;
