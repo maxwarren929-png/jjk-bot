@@ -252,8 +252,11 @@ async function courier(interaction, player) {
       if (currentData.courier_until === until && currentData.courier_pay === pay) {
         currentData.courier_until = null;
         currentData.courier_pay = null;
-        saveJobData(interaction.user.id, currentData);
-        db.update(players).set({ yen: p.yen + pay }).where(eq(players.discord_id, interaction.user.id)).run();
+        sqlite.transaction(() => {
+          saveJobData(interaction.user.id, currentData);
+          const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+          db.update(players).set({ yen: (fresh?.yen || 0) + pay }).where(eq(players.discord_id, interaction.user.id)).run();
+        })();
         try { await interaction.channel.send(`📦 **${interaction.user.username}** completed their delivery! **+${pay} 💰**`); } catch { /* ok */ }
       }
     } catch { /* ok */ }

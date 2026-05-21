@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, ChannelType, PermissionFlagsBits } = require('discord.js');
-const { db } = require('../db/index');
+const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 const { getTechniqueById } = require('../systems/techniques');
@@ -62,8 +62,12 @@ module.exports = {
     const innate = getTechniqueById(player.innate_technique_id);
     const lore = DOMAIN_LORE[player.innate_technique_id] || { name: `${innate?.name || 'Unknown'} Domain`, desc: 'The cursed energy coalesces into a pocket reality.' };
 
-    db.update(players).set({ ce: player.ce - DOMAIN_COST, last_domain_at: now })
-      .where(eq(players.discord_id, discordId)).run();
+    sqlite.transaction(() => {
+      const freshPlayer = db.select().from(players).where(eq(players.discord_id, discordId)).get();
+      if (!freshPlayer || freshPlayer.ce < DOMAIN_COST) return;
+      db.update(players).set({ ce: freshPlayer.ce - DOMAIN_COST, last_domain_at: now })
+        .where(eq(players.discord_id, discordId)).run();
+    })();
     activateDomain(discordId);
 
     // Create a temporary channel

@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { db } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
-const { startTraining, completeTraining } = require('../systems/training');
+const { startTraining, completeTraining, cancelTraining } = require('../systems/training');
 
 const TRAINING_LORE = {
   Meditation:  '🧘 You sit in silence, forcing your cursed energy through rigid channels until it flows freely.',
@@ -40,7 +40,10 @@ module.exports = {
           )))
     .addSubcommand(sub => sub
       .setName('status')
-      .setDescription('Check your current training status.')),
+      .setDescription('Check your current training status.'))
+    .addSubcommand(sub => sub
+      .setName('cancel')
+      .setDescription('Cancel your current training session (no refund).')),
 
   async execute(interaction) {
     await interaction.deferReply();
@@ -83,6 +86,18 @@ module.exports = {
       }
 
       await interaction.editReply('❌ No active training. Start one with `/train start`.');
+      return;
+    }
+
+    if (sub === 'cancel') {
+      const completed = completeTraining(player);
+      if (completed) {
+        await interaction.editReply(`✅ Training was already finished! **${completed.type}** — reward claimed.`);
+        return;
+      }
+      const result = cancelTraining(player);
+      if (result.error) { await interaction.editReply(`❌ ${result.error}`); return; }
+      await interaction.editReply(`✅ **${player.training_type}** training cancelled. No refund — you can start a new session anytime.`);
       return;
     }
 

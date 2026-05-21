@@ -106,4 +106,15 @@ function failTraining(player) {
   return { type, failed: true };
 }
 
-module.exports = { startTraining, completeTraining, regenAllPlayers, checkGradeUp, failTraining, checkAndNotifyCompletedTraining, TRAINING_DURATION_MS };
+function cancelTraining(player) {
+  if (!player.training_until || player.training_until <= Date.now()) {
+    return { error: 'No active training to cancel.' };
+  }
+  db.update(players)
+    .set({ training_until: null, training_type: null })
+    .where(eq(players.discord_id, player.discord_id))
+    .run();
+  return { ok: true };
+}
+
+module.exports = { startTraining, completeTraining, regenAllPlayers, checkGradeUp, failTraining, checkAndNotifyCompletedTraining, cancelTraining, TRAINING_DURATION_MS };

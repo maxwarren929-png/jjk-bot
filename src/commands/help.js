@@ -20,8 +20,9 @@ module.exports = {
           value: '`/profile` — View or create your sorcerer profile\n'
                + '`/techniques` — View your techniques\n'
                + '`/cooldowns` — View all active cooldowns\n'
-               + '`/train start <type>` — Begin a 2-hour training session\n'
+                + '`/train start <type>` — Begin a 2-hour training session\n'
                 + '`/train status` — Check training progress\n'
+                + '`/train cancel` — Cancel current training (no refund)\n'
                 + '`/reset` — Permanently delete your profile and start over\n'
                + '`/leaderboard` — Top players by wealth, wins, or grade\n'
                + '`/rankup` — Check grade progression requirements',

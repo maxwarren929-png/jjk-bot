@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { db } = require('../db/index');
-const { players } = require('../db/schema');
+const { db, sqlite } = require('../db/index');
+const { players, bounties } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 const { placeBounty, listBounties, cancelBounties } = require('../systems/bounties');
 
@@ -17,7 +17,8 @@ module.exports = {
     .addSubcommand(sub => sub
       .setName('cancel')
       .setDescription('Cancel all your bounties on a target (refunded to your wallet).')
-      .addUserOption(o => o.setName('target').setDescription('Who to cancel bounties on').setRequired(true))),
+      .addUserOption(o => o.setName('target').setDescription('Who to cancel bounties on').setRequired(true)))
+    .addSubcommand(sub => sub.setName('check').setDescription('Check if anyone has placed bounties on you')),
 
   async execute(interaction) {
     await interaction.deferReply();
@@ -64,6 +65,22 @@ module.exports = {
         .setTitle('💰 Bounties Cancelled')
         .setColor(0x2ECC71)
         .setDescription(`Cancelled **${result.count}** bounty/bounties on **${targetUser.username}** — refunded **${result.total} 💰**`);
+      return interaction.editReply({ embeds: [embed] });
+    }
+
+    if (sub === 'check') {
+      const myBounties = db.select().from(bounties).where(eq(bounties.target_id, interaction.user.id)).all();
+      if (myBounties.length === 0) return interaction.editReply('✅ No bounties on you. You\'re safe... for now.');
+      const total = myBounties.reduce((sum, b) => sum + b.amount, 0);
+      const placerIds = [...new Set(myBounties.map(b => b.placed_by_id))];
+      const embed = new EmbedBuilder()
+        .setTitle('🎯 Active Bounties on You')
+        .setColor(0xE74C3C)
+        .setDescription(`**${myBounties.length}** bounty/bounties totalling **${total.toLocaleString()} 💰**`)
+        .addFields(
+          { name: '👤 Placers', value: `${placerIds.length} anonymous hunter(s)`, inline: true },
+          { name: '⚠️ Warning', value: 'If someone defeats you, your killer collects.', inline: false },
+        );
       return interaction.editReply({ embeds: [embed] });
     }
   },

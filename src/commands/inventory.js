@@ -67,7 +67,7 @@ module.exports = {
       );
 
     // Items stored in job_data.__items
-    const jobData = JSON.parse(player.job_data || '{}');
+    const jobData = (() => { try { return JSON.parse(player.job_data || '{}'); } catch { return {}; } })();
     const flags = jobData.__items || [];
     const items = flags.map(f => ({ key: f, ...ITEM_NAMES[f] })).filter(Boolean);
     if (items.length > 0) {
@@ -78,7 +78,7 @@ module.exports = {
 
     // Job equipment
     if (player.job) {
-      const data = JSON.parse(player.job_data || '{}');
+      const data = (() => { try { return JSON.parse(player.job_data || '{}'); } catch { return {}; } })();
       const jobLines = [];
       if (player.job === 'fisherman') jobLines.push(`🎣 Rod Level: **${data.rodLevel || 1}**`);
       if (player.job === 'lumberjack') jobLines.push(`🪓 Axe Level: **${data.axeLevel || 1}**`);
@@ -99,7 +99,7 @@ module.exports = {
       statusLines.push(`🏋️ **Training** — ${player.training_type} (${remain}m left)`);
     }
 
-    const jd = JSON.parse(player.job_data || '{}');
+    const jd = (() => { try { return JSON.parse(player.job_data || '{}'); } catch { return {}; } })();
     if (player.job === 'courier' && jd.courier_until && jd.courier_until > Date.now()) {
       const remain = Math.ceil((jd.courier_until - Date.now()) / 60000);
       statusLines.push(`📦 **Delivering** — ${jd.courier_pay}💰 (${remain}m left)`);
@@ -132,7 +132,7 @@ async function useItem(interaction) {
   const player = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
   if (!player) return interaction.editReply('❌ Run `/profile` first.');
 
-  const jobData = JSON.parse(player.job_data || '{}');
+  const jobData = (() => { try { return JSON.parse(player.job_data || '{}'); } catch { return {}; } })();
   const items = jobData.__items || [];
   const idx = items.indexOf(itemKey);
   if (idx === -1) return interaction.editReply(`❌ You don't have a **${USEABLE_ITEMS[itemKey].name}**. Buy one from \`/shop\`.`);

@@ -20,7 +20,8 @@ function formatCooldown(techniqueId, userId) {
 
 function techField(t, userId, locked = false) {
   if (locked) {
-    const req = t.unlock_requires ? JSON.parse(t.unlock_requires) : null;
+    let req = null;
+    try { req = t.unlock_requires ? JSON.parse(t.unlock_requires) : null; } catch { req = null; }
     const reqText = req
       ? (req.type === 'wins' ? `🔒 Unlock: ${req.count} fight wins` : `🔒 Unlock: ${req.type}`)
       : '🔒 Locked';

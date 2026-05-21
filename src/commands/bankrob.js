@@ -88,7 +88,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setTitle('🏦 Bank Robbery Planned')
         .setColor(0xE74C3C)
-        .setDescription(`Target: **${targetUser.username}**'s bank (${target.bank_balance} 💰)`)
+        .setDescription(`Target: **${targetUser.username}**'s bank (${target.bank_balance || 0} 💰)`)
         .addFields(
           { name: '🆔 Heist ID', value: `\`${id}\``, inline: true },
           { name: '👤 Crew', value: `1 (you) — ${heist.members.size * 5}% success`, inline: true },

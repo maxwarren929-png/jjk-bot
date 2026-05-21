@@ -108,7 +108,7 @@ module.exports = {
         silencedTarget = true;
       }
       if (silencedTarget) {
-        const targetData = JSON.parse(freshTarget?.job_data || '{}');
+        const targetData = (() => { try { return JSON.parse(freshTarget?.job_data || '{}'); } catch { return {}; } })();
         if (!targetData.__statuses) targetData.__statuses = {};
         targetData.__statuses.silenced_until = Date.now() + 3600_000; // 1 hour
         db.update(players).set({ job_data: JSON.stringify(targetData) }).where(eq(players.discord_id, targetUser.id)).run();
@@ -144,6 +144,7 @@ module.exports = {
       .setColor(0xE74C3C)
       .setDescription(result.log)
       .setImage(tech?.gif || null)
+      .setFooter(tech?.lore ? { text: tech.lore.slice(0, 100) } : null)
       .addFields(
         { name: `${actor.username}`, value: `${buildBar(result.actor.ce, result.actor.maxCe, '🟪', '⬛', 10)} ${result.actor.ce}/${result.actor.maxCe} CE`, inline: true },
         { name: `${targetUser.username}`, value: `${buildBar(result.targetHp, target.max_hp)} ${result.targetHp}/${target.max_hp} HP\n${buildBar(result.target.ce, result.target.maxCe, '🟪', '⬛', 10)} ${result.target.ce}/${result.target.maxCe} CE`, inline: true },

@@ -50,7 +50,8 @@ function createClan(player, name) {
       joined_at: Date.now(),
     }).run();
 
-    db.update(players).set({ yen: player.yen - CLAN_COST, clan_id: result.id })
+    const freshPlayer = db.select().from(players).where(eq(players.discord_id, player.discord_id)).get();
+    db.update(players).set({ yen: (freshPlayer?.yen || 0) - CLAN_COST, clan_id: result.id })
       .where(eq(players.discord_id, player.discord_id)).run();
   })();
 
