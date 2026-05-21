@@ -44,7 +44,7 @@ module.exports = {
     if (row.components.length > 0) rows.push(row);
 
     const msg = await interaction.editReply({ embeds: [embed], components: rows });
-    const collector = msg.createMessageComponentCollector({ filter: i => i.user.id === discordId, time: 60 * 1000 });
+    const collector = msg.createMessageComponentCollector({ filter: i => i.user.id === discordId && i.customId.startsWith('shop_buy_'), time: 60 * 1000 });
 
     collector.on('collect', async btn => {
       await btn.deferUpdate();
@@ -193,7 +193,10 @@ async function techniquePicker(interaction, btn, discordId) {
   await renderPage();
 
   let msg;
-  try { msg = await interaction.fetchReply(); } catch { return; }
+  try { msg = await interaction.fetchReply(); } catch {
+    try { await interaction.followUp({ content: '❌ Session expired. Please start again.', ephemeral: true }); } catch { /* ok */ }
+    return;
+  }
   if (!msg) return;
   const col = msg.createMessageComponentCollector({ filter: i => i.user.id === discordId, time: 60_000 });
 

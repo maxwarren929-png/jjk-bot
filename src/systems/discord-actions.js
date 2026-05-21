@@ -219,7 +219,8 @@ async function executeDiscordAction(action, ctx) {
       default:
         return false;
     }
-  } catch {
+  } catch (e) {
+    console.error(`[${new Date().toISOString()}] Discord action error:`, e);
     return false;
   }
 }

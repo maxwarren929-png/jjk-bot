@@ -234,7 +234,10 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
     // Grade up
     const tempPlayer = { ...actor, fight_wins: newWins };
     const gradeUp = checkGradeUp(tempPlayer);
-    if (gradeUp) rewards.gradeUp = gradeUp;
+    if (gradeUp) {
+      rewards.gradeUp = gradeUp;
+      actorUpdate.grade = gradeUp;
+    }
   }
 
   sqlite.transaction(() => {

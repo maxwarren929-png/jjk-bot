@@ -41,7 +41,7 @@ module.exports = {
                 + '`/shop` — Buy items\n'
                 + '`/shopinfo` — View item details\n'
                 + '`/buy <item>` — Quick-buy an item\n'
-               + '`/bank` — Deposit/withdraw/upgrade bank\n'
+                + '`/bank` — Deposit/withdraw/upgrade bank (`all: true` for max)\n'
                + '`/bankrob start/join/launch` — Group bank heist\n'
                + '`/pay <user> <amount>` — Send yen\n'
                + '`/bounty place/list/cancel` — Place, view, or cancel bounties (refund)\n'
@@ -56,7 +56,7 @@ module.exports = {
         },
         {
           name: '⚔️ Clans',
-          value: '`/clan create/invite/join/info/leave/transfer/kick/rename` — Clan management',
+          value: '`/clan create/invite/join/info/leave/transfer/kick/rename/disband/invites` — Clan management',
           inline: false,
         },
         {

@@ -84,6 +84,7 @@ function transferYen(fromId, toId, amount) {
     const fFrom = getPlayer(fromId);
     const fTo = getPlayer(toId);
     if (!fFrom || !fTo) return;
+    if (fFrom.yen < amount) return { error: 'Insufficient yen.' };
     db.update(players).set({ yen: fFrom.yen - amount }).where(eq(players.discord_id, fromId)).run();
     db.update(players).set({ yen: fTo.yen + amount }).where(eq(players.discord_id, toId)).run();
   })();

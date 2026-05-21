@@ -45,11 +45,13 @@ module.exports = {
     .addSubcommand(sub => sub
       .setName('deposit')
       .setDescription('Deposit yen into your bank (safe from death).')
-      .addIntegerOption(opt => opt.setName('amount').setDescription('Amount to deposit').setRequired(true).setMinValue(1)))
+      .addIntegerOption(opt => opt.setName('amount').setDescription('Amount to deposit').setRequired(false).setMinValue(1))
+      .addBooleanOption(opt => opt.setName('all').setDescription('Deposit all wallet yen').setRequired(false)))
     .addSubcommand(sub => sub
       .setName('withdraw')
       .setDescription('Withdraw yen from your bank.')
-      .addIntegerOption(opt => opt.setName('amount').setDescription('Amount to withdraw').setRequired(true).setMinValue(1))),
+      .addIntegerOption(opt => opt.setName('amount').setDescription('Amount to withdraw').setRequired(false).setMinValue(1))
+      .addBooleanOption(opt => opt.setName('all').setDescription('Withdraw all bank balance').setRequired(false))),
 
   async execute(interaction) {
     await interaction.deferReply();
@@ -123,7 +125,8 @@ module.exports = {
       return;
     }
 
-    const amount = interaction.options.getInteger('amount');
+    let amount = interaction.options.getInteger('amount');
+    const all = interaction.options.getBoolean('all');
 
     if (sub === 'deposit') {
       // Accrue interest first, then re-fetch to avoid stale balance
@@ -131,6 +134,8 @@ module.exports = {
       const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
       const walletYen = fresh.yen;
       const bankBal = fresh.bank_balance || 0;
+      if (all) amount = walletYen;
+      if (!amount || amount <= 0) return interaction.editReply('❌ Specify an amount or use `all: true`.');
       if (amount > walletYen) return interaction.editReply(`❌ You only have **${walletYen.toLocaleString()} 💰** in your wallet.`);
       const canStore = fresh.bank_max - bankBal;
       const actual = Math.min(amount, canStore);
@@ -166,6 +171,8 @@ module.exports = {
       accrueInterest(interaction.user.id);
       const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
       const bankBal = fresh.bank_balance || 0;
+      if (all) amount = bankBal;
+      if (!amount || amount <= 0) return interaction.editReply('❌ Specify an amount or use `all: true`.');
       if (amount > bankBal) return interaction.editReply(`❌ You only have **${bankBal.toLocaleString()} 💰** in the bank.`);
       const newWallet = fresh.yen + amount;
       db.update(players).set({ yen: newWallet, bank_balance: bankBal - amount })

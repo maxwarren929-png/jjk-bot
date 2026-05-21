@@ -86,13 +86,7 @@ const GRADE_THRESHOLDS = {
 function checkGradeUp(player) {
   const threshold = GRADE_THRESHOLDS[player.grade];
   if (!threshold) return null;
-  if (player.fight_wins >= threshold.wins) {
-    db.update(players)
-      .set({ grade: threshold.next })
-      .where(eq(players.discord_id, player.discord_id))
-      .run();
-    return threshold.next;
-  }
+  if (player.fight_wins >= threshold.wins) return threshold.next;
   return null;
 }
 

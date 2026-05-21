@@ -80,7 +80,7 @@ function handleBossKill(boss, channelId) {
         }
       });
     })();
-  } catch { /* ok */ }
+  } catch (e) { console.error(`[${new Date().toISOString()}] Boss kill error:`, e); }
 }
 
 function handleBossTimeout(boss, channelId) {
@@ -94,7 +94,7 @@ function handleBossTimeout(boss, channelId) {
       innate_removed: true,
       innate_technique_id: null,
     }).where(eq(players.discord_id, boss.targetId)).run();
-  } catch { /* ok */ }
+  } catch (e) { console.error(`[${new Date().toISOString()}] Boss timeout error:`, e); }
 }
 
 // Check expired bosses every 60s

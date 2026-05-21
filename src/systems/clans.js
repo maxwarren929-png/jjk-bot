@@ -201,4 +201,8 @@ function transferLeadership(leader, targetId) {
   return { ok: true, clan };
 }
 
-module.exports = { getClan, getClanByName, getMembership, getMembers, createClan, inviteToClan, joinClan, leaveClan, transferLeadership, kickFromClan, renameClan, disbandClan, getPlayerClanBonus };
+function getPendingInvites(clanId) {
+  return db.select().from(clan_invites).where(eq(clan_invites.clan_id, clanId)).all();
+}
+
+module.exports = { getClan, getClanByName, getMembership, getMembers, createClan, inviteToClan, joinClan, leaveClan, transferLeadership, kickFromClan, renameClan, disbandClan, getPlayerClanBonus, getPendingInvites };

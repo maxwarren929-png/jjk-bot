@@ -49,12 +49,12 @@ module.exports = {
         new ButtonBuilder().setCustomId('reset_cancel').setLabel('Cancel').setStyle(ButtonStyle.Secondary),
       );
 
-      await interaction.editReply({
+      const msg = await interaction.editReply({
         content: '☠️ **This will delete ALL player data — yen, techniques, jobs, banks, everything.** Everyone must run `/profile` to start over. Are you sure?',
         components: [confirm],
       });
 
-      const col = interaction.channel.createMessageComponentCollector({ filter: i => i.user.id === interaction.user.id, time: 30_000, max: 1 });
+      const col = msg.createMessageComponentCollector({ filter: i => i.user.id === interaction.user.id, time: 30_000, max: 1 });
       col.on('collect', async btn => {
         await btn.deferUpdate();
         if (btn.customId === 'reset_cancel') {

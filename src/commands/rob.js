@@ -67,12 +67,14 @@ module.exports = {
       embed.setDescription(`Stole **${finalStealAmount} 💰** from **${targetUser.username}**'s wallet.`);
     } else {
       const freshActor = db.select().from(players).where(eq(players.discord_id, userId)).get();
-      const fine = Math.max(10, Math.floor(stealAmount * FAIL_FINE_PCT));
+      const freshTarget = db.select().from(players).where(eq(players.discord_id, targetUser.id)).get();
+      const failStealAmount = Math.min(Math.floor((freshTarget?.yen || 0) * STEAL_PCT), MAX_STEAL);
+      const fine = Math.max(10, Math.floor(failStealAmount * FAIL_FINE_PCT));
       const actualFine = Math.min(fine, freshActor?.yen || 0);
       db.update(players).set({ yen: (freshActor?.yen || 0) - actualFine, last_robbed_at: Date.now() }).where(eq(players.discord_id, userId)).run();
       newActorYen = (freshActor?.yen || 0) - actualFine;
       newTargetYen = target.yen;
-      embed.setDescription(`Got caught! Paid **${actualFine} 💰** in fines.`);
+      embed.setDescription(`Got caught! Paid **${actualFine} 💰** in fines (${FAIL_FINE_PCT * 100}% of ${failStealAmount} 💰 attempted steal).`);
     }
 
     embed.addFields(

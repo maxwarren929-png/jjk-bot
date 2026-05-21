@@ -77,7 +77,7 @@ async function coinflip(interaction) {
   sqlite.transaction(() => {
     const fPlayer = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
     if (!fPlayer) return;
-    const actualPayout = fPlayer.yen < amount ? -fPlayer.yen : payout;
+    const actualPayout = payout > 0 ? payout : Math.max(-fPlayer.yen, payout);
     db.update(players).set({ yen: fPlayer.yen + actualPayout })
       .where(eq(players.discord_id, interaction.user.id)).run();
   })();
@@ -112,7 +112,7 @@ async function dice(interaction) {
   sqlite.transaction(() => {
     const fPlayer = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
     if (!fPlayer) return;
-    const actualPayout = fPlayer.yen < amount ? -fPlayer.yen : payout;
+    const actualPayout = payout > 0 ? payout : Math.max(-fPlayer.yen, payout);
     db.update(players).set({ yen: fPlayer.yen + actualPayout })
       .where(eq(players.discord_id, interaction.user.id)).run();
   })();

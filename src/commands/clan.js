@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 const { db } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
-const { createClan, inviteToClan, joinClan, leaveClan, getClanByName, getMembership, getMembers, getClan, transferLeadership, kickFromClan, renameClan, disbandClan } = require('../systems/clans');
+const { createClan, inviteToClan, joinClan, leaveClan, getClanByName, getMembership, getMembers, getClan, transferLeadership, kickFromClan, renameClan, disbandClan, getPendingInvites } = require('../systems/clans');
 
 const PASSIVE_DESC = {
   CE_REGEN:        '+10% CE regeneration per tick',
@@ -30,7 +30,8 @@ module.exports = {
       .addUserOption(o => o.setName('user').setDescription('Member to kick').setRequired(true)))
     .addSubcommand(sub => sub.setName('rename').setDescription('Rename your clan (leader only)')
       .addStringOption(o => o.setName('name').setDescription('New clan name').setRequired(true)))
-    .addSubcommand(sub => sub.setName('disband').setDescription('Permanently delete your clan (leader only). All members ejected.')),
+    .addSubcommand(sub => sub.setName('disband').setDescription('Permanently delete your clan (leader only). All members ejected.'))
+    .addSubcommand(sub => sub.setName('invites').setDescription('View pending clan invites (leader only).')),
 
   async execute(interaction) {
     await interaction.deferReply();
@@ -119,21 +120,22 @@ module.exports = {
       col.on('end', (_, reason) => {
         if (reason === 'time') interaction.editReply({ components: [] }).catch(() => {});
       });
-    } else if (sub === 'transfer') {
-      const target = interaction.options.getUser('user');
-      const result = transferLeadership(player, target.id);
-      if (result.error) { await interaction.editReply(`❌ ${result.error}`); return; }
-      await interaction.editReply(`✅ Transferred clan leadership to **${target.username}**.`);
-    } else if (sub === 'kick') {
-      const target = interaction.options.getUser('user');
-      const result = kickFromClan(player, target.id);
-      if (result.error) { await interaction.editReply(`❌ ${result.error}`); return; }
-      await interaction.editReply(`✅ Kicked **${target.username}** from the clan.`);
-    } else if (sub === 'rename') {
-      const newName = interaction.options.getString('name').trim();
-      const result = renameClan(player, newName);
-      if (result.error) { await interaction.editReply(`❌ ${result.error}`); return; }
-      await interaction.editReply(`✅ Renamed **${result.oldName}** → **${result.newName}**.`);
+    } else if (sub === 'invites') {
+      const membership = getMembership(interaction.user.id);
+      if (!membership || membership.role !== 'Leader') {
+        await interaction.editReply('❌ Only clan leaders can view pending invites.');
+        return;
+      }
+      const pending = getPendingInvites(membership.clan_id);
+      if (pending.length === 0) {
+        await interaction.editReply('📭 No pending invites.');
+        return;
+      }
+      const embed = new EmbedBuilder()
+        .setTitle('📨 Pending Clan Invites')
+        .setColor(0x3498DB)
+        .setDescription(pending.map(inv => `<@${inv.invitee_id}> — invited <t:${Math.floor(inv.created_at / 1000)}:R>`).join('\n'));
+      await interaction.editReply({ embeds: [embed] });
     } else if (sub === 'disband') {
       const membership = getMembership(interaction.user.id);
       if (!membership || membership.role !== 'Leader') {
