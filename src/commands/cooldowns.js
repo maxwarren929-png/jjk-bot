@@ -47,7 +47,7 @@ module.exports = {
     const DAY_MS = 86400000;
     if (player.last_daily_at && now - player.last_daily_at < DAY_MS) {
       const remain = player.last_daily_at + DAY_MS - now;
-      lines.push(`📅 **Daily** — ${Math.ceil(remain / 3600000)}h ${Math.ceil((remain % 3600000) / 60000)}m remaining`);
+      lines.push(`📅 **Daily** — ${Math.floor(remain / 3600000)}h ${Math.ceil((remain % 3600000) / 60000)}m remaining`);
     }
 
     // Technique cooldowns (in-memory)
@@ -69,7 +69,8 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setTitle(`⏳ ${interaction.user.username}'s Cooldowns`)
       .setColor(0x3498DB)
-      .setDescription(lines.join('\n\n'));
+      .setDescription(lines.join('\n\n'))
+      .setFooter({ text: `🏦 Bank: ${(player.bank_balance || 0).toLocaleString()} / ${player.bank_max === Infinity ? '♾️' : player.bank_max.toLocaleString()} 💰` });
 
     await interaction.editReply({ embeds: [embed] });
   },

@@ -87,6 +87,7 @@ module.exports = {
         { name: '💰 Yen', value: `${player.yen.toLocaleString()} 💰`, inline: true },
         { name: '🏦 Bank', value: `${(player.bank_balance || 0).toLocaleString()} 💰`, inline: true },
         { name: '🏆 Wins', value: `${player.fight_wins}`, inline: true },
+        { name: '🔥 Daily Streak', value: `${player.daily_streak || 0} day${(player.daily_streak || 0) > 1 ? 's' : ''}`, inline: true },
         {
           name: '👁️ Innate Technique',
           value: innate ? `**${innate.name}**\n${innate.description}` : innateDead ? '~~Destroyed~~' : 'None',

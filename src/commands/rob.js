@@ -57,13 +57,15 @@ module.exports = {
       sqlite.transaction(() => {
         const fTarget = db.select().from(players).where(eq(players.discord_id, targetUser.id)).get();
         const fActor = db.select().from(players).where(eq(players.discord_id, userId)).get();
-        const actualSteal = Math.min(Math.floor((fTarget?.yen || 0) * STEAL_PCT), MAX_STEAL);
+        if (!fTarget || !fActor) return;
+        const actualSteal = Math.min(Math.floor(fTarget.yen * STEAL_PCT), MAX_STEAL);
         finalStealAmount = actualSteal;
-        db.update(players).set({ yen: (fTarget?.yen || 0) - actualSteal }).where(eq(players.discord_id, targetUser.id)).run();
-        db.update(players).set({ yen: (fActor?.yen || 0) + actualSteal, last_robbed_at: Date.now() }).where(eq(players.discord_id, userId)).run();
-        newActorYen = (fActor?.yen || 0) + actualSteal;
-        newTargetYen = (fTarget?.yen || 0) - actualSteal;
+        db.update(players).set({ yen: fTarget.yen - actualSteal }).where(eq(players.discord_id, targetUser.id)).run();
+        db.update(players).set({ yen: fActor.yen + actualSteal, last_robbed_at: Date.now() }).where(eq(players.discord_id, userId)).run();
+        newActorYen = fActor.yen + actualSteal;
+        newTargetYen = fTarget.yen - actualSteal;
       })();
+      if (newActorYen === undefined) return interaction.editReply('❌ Robbery failed — target or actor not found.');
       embed.setDescription(`Stole **${finalStealAmount} 💰** from **${targetUser.username}**'s wallet.`);
     } else {
       let failStealAmount = 0, actualFine = 0;

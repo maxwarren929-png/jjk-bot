@@ -85,32 +85,39 @@ module.exports = {
     }
 
     // Consumable item effects from job_data.__items (consume only after technique succeeds)
-    const freshActor = db.select().from(players).where(eq(players.discord_id, discordId)).get();
-    const freshTarget = db.select().from(players).where(eq(players.discord_id, targetUser.id)).get();
-    const actorJob = (() => { try { return JSON.parse(freshActor?.job_data || '{}'); } catch { return {}; } })();
-    const items = actorJob.__items || [];
     let itemBonusDmg = 0;
     let silencedTarget = false;
 
     sqlite.transaction(() => {
-      if (items.includes('BONUS_DAMAGE_20')) {
+      const fActor = db.select().from(players).where(eq(players.discord_id, discordId)).get();
+      const fTarget = db.select().from(players).where(eq(players.discord_id, targetUser.id)).get();
+      if (!fActor) return;
+      const job = (() => { try { return JSON.parse(fActor.job_data || '{}'); } catch { return {}; } })();
+      const inv = job.__items || [];
+      let modified = false;
+
+      if (inv.includes('BONUS_DAMAGE_20')) {
         itemBonusDmg = 20;
-        const idx = items.indexOf('BONUS_DAMAGE_20');
-        items.splice(idx, 1);
-        actorJob.__items = items;
-        db.update(players).set({ job_data: JSON.stringify(actorJob) }).where(eq(players.discord_id, discordId)).run();
+        const idx = inv.indexOf('BONUS_DAMAGE_20');
+        inv.splice(idx, 1);
+        job.__items = inv;
+        modified = true;
       }
-      if (items.includes('SILENCE_NEXT')) {
-        const idx = items.indexOf('SILENCE_NEXT');
-        items.splice(idx, 1);
-        actorJob.__items = items;
-        db.update(players).set({ job_data: JSON.stringify(actorJob) }).where(eq(players.discord_id, discordId)).run();
+      if (inv.includes('SILENCE_NEXT')) {
+        const idx = inv.indexOf('SILENCE_NEXT');
+        inv.splice(idx, 1);
+        job.__items = inv;
+        db.update(players).set({ job_data: JSON.stringify(job) }).where(eq(players.discord_id, discordId)).run();
         silencedTarget = true;
+        modified = false; // already written above
       }
-      if (silencedTarget) {
-        const targetData = (() => { try { return JSON.parse(freshTarget?.job_data || '{}'); } catch { return {}; } })();
+      if (modified) {
+        db.update(players).set({ job_data: JSON.stringify(job) }).where(eq(players.discord_id, discordId)).run();
+      }
+      if (silencedTarget && fTarget) {
+        const targetData = (() => { try { return JSON.parse(fTarget.job_data || '{}'); } catch { return {}; } })();
         if (!targetData.__statuses) targetData.__statuses = {};
-        targetData.__statuses.silenced_until = Date.now() + 3600_000; // 1 hour
+        targetData.__statuses.silenced_until = Date.now() + 3600_000;
         db.update(players).set({ job_data: JSON.stringify(targetData) }).where(eq(players.discord_id, targetUser.id)).run();
       }
     })();

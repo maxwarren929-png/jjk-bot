@@ -84,16 +84,18 @@ function transferYen(fromId, toId, amount) {
   const from = getPlayer(fromId);
   const to = getPlayer(toId);
   if (!from || !to) return { error: 'Player not found.' };
-  if (from.yen < amount) return { error: 'Insufficient yen.' };
-  sqlite.transaction(() => {
-    const fFrom = getPlayer(fromId);
-    const fTo = getPlayer(toId);
-    if (!fFrom || !fTo) return;
-    if (fFrom.yen < amount) return { error: 'Insufficient yen.' };
-    db.update(players).set({ yen: fFrom.yen - amount }).where(eq(players.discord_id, fromId)).run();
-    db.update(players).set({ yen: fTo.yen + amount }).where(eq(players.discord_id, toId)).run();
-  })();
-  return { ok: true };
+  let result = null;
+  try {
+    sqlite.transaction(() => {
+      const fFrom = getPlayer(fromId);
+      const fTo = getPlayer(toId);
+      if (!fFrom || !fTo) { result = { error: 'Player not found.' }; return; }
+      if (fFrom.yen < amount) { result = { error: 'Insufficient yen.' }; return; }
+      db.update(players).set({ yen: fFrom.yen - amount }).where(eq(players.discord_id, fromId)).run();
+      db.update(players).set({ yen: fTo.yen + amount }).where(eq(players.discord_id, toId)).run();
+    })();
+  } catch { /* ok */ }
+  return result || { ok: true };
 }
 
 const CONSUMABLE_EFFECTS = ['CE_RESTORE_50', 'SILENCE_NEXT', 'BONUS_DAMAGE_20', 'EXIT_BROKEN'];

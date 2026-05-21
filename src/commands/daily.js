@@ -15,7 +15,9 @@ const DAILY_YEN = {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('daily')
-    .setDescription('Claim your daily reward.'),
+    .setDescription('Claim your daily reward.')
+    .addSubcommand(sub => sub.setName('claim').setDescription('Claim your daily reward.'))
+    .addSubcommand(sub => sub.setName('info').setDescription('Check your daily streak and next claim info.')),
 
   async execute(interaction) {
     await interaction.deferReply();
@@ -26,8 +28,36 @@ module.exports = {
       return;
     }
 
+    const sub = interaction.options.getSubcommand();
     const now = Date.now();
 
+    if (sub === 'info') {
+      let streak = player.daily_streak || 0;
+      if (player.last_daily_at && now - player.last_daily_at > 2 * DAY_MS) {
+        streak = 0;
+      }
+      const baseYen = DAILY_YEN[player.grade] || 40;
+      const nextBonus = streak >= STREAK_CAP ? 0 : streak * STREAK_BONUS_PER;
+      const nextTotal = baseYen + nextBonus;
+      const canClaim = !player.last_daily_at || now - player.last_daily_at >= DAY_MS;
+      const embed = new EmbedBuilder()
+        .setTitle('📅 Daily Streak')
+        .setColor(0xF1C40F)
+        .addFields(
+          { name: '🔥 Current Streak', value: `${streak} day${streak > 1 ? 's' : ''}`, inline: true },
+          { name: '🏅 Grade', value: player.grade, inline: true },
+          { name: '💰 Next Claim', value: canClaim ? '**Ready now!**' : `<t:${Math.floor((player.last_daily_at + DAY_MS) / 1000)}:R>`, inline: false },
+          { name: '📊 Next Reward', value: `**${nextTotal} 💰** (${baseYen} base + ${nextBonus} streak bonus)`, inline: false },
+        );
+      if (streak < STREAK_CAP) {
+        embed.setFooter({ text: `Max streak: ${STREAK_CAP} days (+${(STREAK_CAP - 1) * STREAK_BONUS_PER} bonus)` });
+      } else {
+        embed.setFooter({ text: '🔥 Max streak reached! All future claims at max bonus.' });
+      }
+      return interaction.editReply({ embeds: [embed] });
+    }
+
+    // claim
     if (player.last_daily_at && now - player.last_daily_at < DAY_MS) {
       const next = new Date(player.last_daily_at + DAY_MS);
       await interaction.editReply(`⏳ Daily already claimed. Next claim: <t:${Math.floor(next / 1000)}:R>`);

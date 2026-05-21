@@ -85,15 +85,19 @@ function handleBossKill(boss, channelId) {
 
 function handleBossTimeout(boss, channelId) {
   try {
-    db.update(players).set({
-      hp: 0,
-      is_broken: true,
-      broken_until: Date.now() + 24 * 60 * 60 * 1000,
-      yen: 0,
-      bank_balance: 0,
-      innate_removed: true,
-      innate_technique_id: null,
-    }).where(eq(players.discord_id, boss.targetId)).run();
+    sqlite.transaction(() => {
+      const fresh = db.select().from(players).where(eq(players.discord_id, boss.targetId)).get();
+      if (!fresh) return;
+      db.update(players).set({
+        hp: 0,
+        is_broken: true,
+        broken_until: Date.now() + 24 * 60 * 60 * 1000,
+        yen: 0,
+        bank_balance: 0,
+        innate_removed: true,
+        innate_technique_id: null,
+      }).where(eq(players.discord_id, boss.targetId)).run();
+    })();
   } catch (e) { console.error(`[${new Date().toISOString()}] Boss timeout error:`, e); }
 }
 

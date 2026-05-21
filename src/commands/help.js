@@ -37,7 +37,8 @@ module.exports = {
         },
         {
           name: '🏦 Economy',
-          value: '`/daily` — Claim daily reward (streak bonus)\n'
+           value: '`/daily claim` — Claim daily reward (streak bonus)\n'
+                 + '`/daily info` — Check daily streak and next claim\n'
                 + '`/shop` — Buy items\n'
                 + '`/shopinfo` — View item details\n'
                 + '`/buy <item>` — Quick-buy an item\n'
@@ -61,7 +62,7 @@ module.exports = {
         },
         {
           name: '📦 Inventory',
-          value: '`/inventory view/use/sell` — Manage your items',
+           value: '`/inventory view/use/sell/give` — Manage and gift your items',
           inline: false,
         },
       );

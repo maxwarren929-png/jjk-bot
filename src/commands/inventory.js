@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { db } = require('../db/index');
+const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 
@@ -46,68 +46,70 @@ module.exports = {
       .setName('sell')
       .setDescription('Sell a combat item for 50% of its value.')
       .addStringOption(opt => opt.setName('item').setDescription('Item to sell').setRequired(true)
-        .addChoices(...SELLABLE_ITEMS.map(i => ({ name: i.name, value: i.value }))))),
+        .addChoices(...SELLABLE_ITEMS.map(i => ({ name: i.name, value: i.value })))))
+    .addSubcommand(sub => sub
+      .setName('give')
+      .setDescription('Give an item to another player.')
+      .addUserOption(opt => opt.setName('user').setDescription('Recipient').setRequired(true))
+      .addStringOption(opt => opt.setName('item').setDescription('Item to give').setRequired(true)
+        .addChoices(
+          { name: '🔇 Binding Ring (silence enemy)', value: 'SILENCE_NEXT' },
+          { name: '🗡️ Split Soul Katana (+20 damage)', value: 'BONUS_DAMAGE_20' },
+          { name: '💜 CE Potion (restore 50 CE)', value: 'CE_RESTORE_50' },
+          { name: '🧪 Healing Vial (exit Broken)', value: 'EXIT_BROKEN' },
+        ))),
 
   async execute(interaction) {
     const sub = interaction.options.getSubcommand();
     if (sub === 'use') return useItem(interaction);
     if (sub === 'sell') return sellItem(interaction);
+    if (sub === 'give') return giveItem(interaction);
 
     await interaction.deferReply();
     const player = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
     if (!player) return interaction.editReply('❌ Run `/profile` first.');
 
     const embed = new EmbedBuilder()
-      .setTitle(`📦 ${interaction.user.username}'s Inventory`)
+      .setTitle(`🎒 ${interaction.user.username}'s Inventory`)
       .setColor(0x3498DB)
       .addFields(
         { name: '👛 Wallet', value: `${player.yen.toLocaleString()} 💰`, inline: true },
         { name: '🏦 Bank', value: `${(player.bank_balance || 0).toLocaleString()} 💰`, inline: true },
-        { name: '💰 Total', value: `${(player.yen + (player.bank_balance || 0)).toLocaleString()} 💰`, inline: true },
+        { name: '🏅 Grade', value: player.grade, inline: true },
       );
 
-    // Items stored in job_data.__items
     const jobData = (() => { try { return JSON.parse(player.job_data || '{}'); } catch { return {}; } })();
-    const flags = jobData.__items || [];
-    const items = flags.map(f => ({ key: f, ...ITEM_NAMES[f] })).filter(Boolean);
+    const items = jobData.__items || [];
+
     if (items.length > 0) {
-      embed.addFields({ name: '⚔️ Combat Items', value: items.map(i => `**${i.name}** — ${i.desc}\n└ Sell: **${getSellPrice(i.key)} 💰**`).join('\n'), inline: false });
+      const itemList = items.map(k => `• ${ITEM_NAMES[k]?.name || k}`).join('\n');
+      embed.addFields({ name: '⚔️ Combat Items', value: itemList, inline: false });
     } else {
-      embed.addFields({ name: '⚔️ Combat Items', value: 'None — buy from `/shop`', inline: false });
+      embed.addFields({ name: '⚔️ Combat Items', value: 'None. Buy items from `/shop`.', inline: false });
     }
 
-    // Job equipment
-    if (player.job) {
-      const data = (() => { try { return JSON.parse(player.job_data || '{}'); } catch { return {}; } })();
-      const jobLines = [];
-      if (player.job === 'fisherman') jobLines.push(`🎣 Rod Level: **${data.rodLevel || 1}**`);
-      if (player.job === 'lumberjack') jobLines.push(`🪓 Axe Level: **${data.axeLevel || 1}**`);
-      if (player.job === 'miner') {
-        const ores = data.miner_ores || {};
-        const oreStr = Object.entries(ores).filter(([_, qty]) => qty > 0)
-          .map(([id, qty]) => `${id === 'iron' ? '⛓️' : id === 'gold' ? '🪙' : '💎'} ${id.charAt(0).toUpperCase() + id.slice(1)}: ${qty}`).join(' | ') || 'None';
-        jobLines.push(`⛏️ Raw Ores: ${oreStr}`);
-      }
-      if (jobLines.length) embed.addFields({ name: `💼 ${player.job.charAt(0).toUpperCase() + player.job.slice(1)}`, value: jobLines.join('\n'), inline: false });
+    const equipLines = [];
+    if (player.job === 'lumberjack') {
+      const axeLevel = jobData.axeLevel || 1;
+      equipLines.push(`🪓 Lumber Axe (Lv.${axeLevel})`);
     }
+    if (player.job === 'fisherman') {
+      const rodLevel = jobData.rodLevel || 1;
+      equipLines.push(`🎣 Fishing Rod (Lv.${rodLevel})`);
+    }
+    if (equipLines.length) embed.addFields({ name: '🛠️ Equipment', value: equipLines.join('\n'), inline: false });
 
-    // Active statuses
     const statusLines = [];
-    if (player.is_broken) statusLines.push('💀 **Broken** — cannot fight or use domain');
-    if (player.training_until && player.training_until > Date.now()) {
-      const remain = Math.ceil((player.training_until - Date.now()) / 60000);
-      statusLines.push(`🏋️ **Training** — ${player.training_type} (${remain}m left)`);
-    }
-
-    const jd = (() => { try { return JSON.parse(player.job_data || '{}'); } catch { return {}; } })();
-    if (player.job === 'courier' && jd.courier_until && jd.courier_until > Date.now()) {
-      const remain = Math.ceil((jd.courier_until - Date.now()) / 60000);
-      statusLines.push(`📦 **Delivering** — ${jd.courier_pay}💰 (${remain}m left)`);
+    if (player.is_broken) statusLines.push('💀 Broken');
+    const now = Date.now();
+    if (player.job === 'courier' && jobData.courier_until && jobData.courier_until > now) {
+      const remain = Math.ceil((jobData.courier_until - now) / 60000);
+      statusLines.push(`📦 **Delivering** — ${jobData.courier_pay}💰 (${remain}m left)`);
     }
 
     if (statusLines.length) embed.addFields({ name: '🔴 Active Statuses', value: statusLines.join('\n'), inline: false });
 
-  await interaction.editReply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
   },
 };
 
@@ -126,6 +128,42 @@ async function sellItem(interaction) {
   await interaction.editReply({ embeds: [embed] });
 }
 
+async function giveItem(interaction) {
+  await interaction.deferReply();
+  const targetUser = interaction.options.getUser('user');
+  const itemKey = interaction.options.getString('item');
+  if (targetUser.id === interaction.user.id) return interaction.editReply('❌ You cannot give items to yourself.');
+
+  const target = db.select().from(players).where(eq(players.discord_id, targetUser.id)).get();
+  if (!target) return interaction.editReply(`❌ **${targetUser.username}** has no profile.`);
+
+  const item = ITEM_NAMES[itemKey];
+  if (!item) return interaction.editReply('❌ Unknown item.');
+
+  sqlite.transaction(() => {
+    const giver = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+    if (!giver) return;
+    const giverJob = (() => { try { return JSON.parse(giver.job_data || '{}'); } catch { return {}; } })();
+    const giverItems = giverJob.__items || [];
+    const idx = giverItems.indexOf(itemKey);
+    if (idx === -1) return;
+    giverItems.splice(idx, 1);
+    giverJob.__items = giverItems;
+    db.update(players).set({ job_data: JSON.stringify(giverJob) }).where(eq(players.discord_id, interaction.user.id)).run();
+
+    const recvJob = (() => { try { return JSON.parse(target.job_data || '{}'); } catch { return {}; } })();
+    if (!recvJob.__items) recvJob.__items = [];
+    if (!recvJob.__items.includes(itemKey)) recvJob.__items.push(itemKey);
+    db.update(players).set({ job_data: JSON.stringify(recvJob) }).where(eq(players.discord_id, targetUser.id)).run();
+  })();
+
+  const embed = new EmbedBuilder()
+    .setTitle('🎁 Item Given')
+    .setColor(0x9B59B6)
+    .setDescription(`**${item.name}** given to **${targetUser.username}**.`);
+  await interaction.editReply({ embeds: [embed] });
+}
+
 async function useItem(interaction) {
   await interaction.deferReply();
   const itemKey = interaction.options.getString('item');
@@ -138,32 +176,43 @@ async function useItem(interaction) {
   if (idx === -1) return interaction.editReply(`❌ You don't have a **${USEABLE_ITEMS[itemKey].name}**. Buy one from \`/shop\`.`);
 
   items.splice(idx, 1);
-  const update = {};
   const resultText = USEABLE_ITEMS[itemKey].desc;
 
-  if (itemKey === 'CE_RESTORE_50') {
-    if (player.ce >= player.max_ce) {
-      jobData.__items = [...items, itemKey];
-      db.update(players).set({ job_data: JSON.stringify(jobData) }).where(eq(players.discord_id, interaction.user.id)).run();
-      return interaction.editReply('❌ Your CE is already full. Save the potion for later.');
-    }
-    update.ce = Math.min(player.ce + 50, player.max_ce);
-  }
+  let skipped = null;
+  sqlite.transaction(() => {
+    const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+    if (!fresh) return;
+    const freshJob = (() => { try { return JSON.parse(fresh.job_data || '{}'); } catch { return {}; } })();
+    const freshItems = freshJob.__items || [];
+    const fIdx = freshItems.indexOf(itemKey);
+    if (fIdx === -1) return;
+    freshItems.splice(fIdx, 1);
+    freshJob.__items = freshItems;
 
-  if (itemKey === 'EXIT_BROKEN') {
-    if (!player.is_broken) {
-      jobData.__items = [...items, itemKey];
-      db.update(players).set({ job_data: JSON.stringify(jobData) }).where(eq(players.discord_id, interaction.user.id)).run();
-      return interaction.editReply('❌ You are not Broken. No need for a Healing Vial.');
+    if (itemKey === 'CE_RESTORE_50') {
+      if (fresh.ce >= fresh.max_ce) {
+        skipped = 'Your CE is already full. Save the potion for later.';
+        db.update(players).set({ job_data: JSON.stringify(freshJob) }).where(eq(players.discord_id, interaction.user.id)).run();
+        return;
+      }
     }
-    update.is_broken = false;
-    update.broken_until = null;
-    update.hp = Math.min(player.hp + 50, player.max_hp);
-  }
 
-  jobData.__items = items;
-  update.job_data = JSON.stringify(jobData);
-  db.update(players).set(update).where(eq(players.discord_id, interaction.user.id)).run();
+    if (itemKey === 'EXIT_BROKEN') {
+      if (!fresh.is_broken) {
+        skipped = 'You are not Broken. No need for a Healing Vial.';
+        db.update(players).set({ job_data: JSON.stringify(freshJob) }).where(eq(players.discord_id, interaction.user.id)).run();
+        return;
+      }
+    }
+
+    const update = {};
+    if (itemKey === 'CE_RESTORE_50') update.ce = Math.min(fresh.ce + 50, fresh.max_ce);
+    if (itemKey === 'EXIT_BROKEN') { update.is_broken = false; update.broken_until = null; update.hp = Math.min(fresh.hp + 50, fresh.max_hp); }
+    update.job_data = JSON.stringify(freshJob);
+    db.update(players).set(update).where(eq(players.discord_id, interaction.user.id)).run();
+  })();
+
+  if (skipped) return interaction.editReply(`❌ ${skipped}`);
 
   const embed = new EmbedBuilder()
     .setTitle(`✅ Used: ${USEABLE_ITEMS[itemKey].name}`)

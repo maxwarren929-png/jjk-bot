@@ -79,9 +79,8 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
     cooldowns: {},
   };
 
-  // Deduct CE and apply cooldown
+  // Deduct CE and apply cooldown (in memory — persisted after DB write succeeds)
   actorState.ce -= tech.ce_cost;
-  userCDs[techniqueId] = now + tech.cooldown_seconds * 1000;
 
   // Check if actor is silenced (Binding Ring effect — persisted via job_data.__statuses.silenced_until)
   const actorJobData = (() => { try { return JSON.parse(actor.job_data || '{}'); } catch { return {}; } })();
@@ -89,7 +88,13 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
   if (actorStatuses.silenced_until && actorStatuses.silenced_until > Date.now()) {
     delete actorStatuses.silenced_until;
     actorJobData.__statuses = actorStatuses;
-    db.update(players).set({ ce: actorState.ce, job_data: JSON.stringify(actorJobData) }).where(eq(players.discord_id, actor.discord_id)).run();
+    sqlite.transaction(() => {
+      const fresh = db.select().from(players).where(eq(players.discord_id, actor.discord_id)).get();
+      if (!fresh) return;
+      const freshJob = (() => { try { return JSON.parse(fresh.job_data || '{}'); } catch { return {}; } })();
+      if (freshJob.__statuses) delete freshJob.__statuses.silenced_until;
+      db.update(players).set({ ce: Math.max(0, fresh.ce - tech.ce_cost), job_data: JSON.stringify(freshJob) }).where(eq(players.discord_id, actor.discord_id)).run();
+    })();
     return { ok: true, damage: 0, log: `🔇 **${actor.username}** is silenced — the attack fizzled!`, targetHp: targetState.hp, rewards: null, actor: actorState, target: targetState };
   }
 
@@ -243,14 +248,20 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
   sqlite.transaction(() => {
     const freshActor = db.select().from(players).where(eq(players.discord_id, actor.discord_id)).get();
     const freshTarget = db.select().from(players).where(eq(players.discord_id, target.discord_id)).get();
-    if (freshActor) db.update(players).set({
-      ...actorUpdate,
-      yen: (freshActor.yen || 0) + (actorUpdate.yen - (actor.yen || 0)),
-    }).where(eq(players.discord_id, actor.discord_id)).run();
+    if (freshActor) {
+      const setData = { ...actorUpdate };
+      if (actorUpdate.yen !== undefined) {
+        setData.yen = (freshActor.yen || 0) + (actorUpdate.yen - (actor.yen || 0));
+      }
+      db.update(players).set(setData).where(eq(players.discord_id, actor.discord_id)).run();
+    }
     if (!skipTargetDamage && freshTarget) {
       db.update(players).set(targetUpdate).where(eq(players.discord_id, target.discord_id)).run();
     }
   })();
+
+  // Persist cooldown in memory only after DB write succeeds
+  userCDs[techniqueId] = now + tech.cooldown_seconds * 1000;
 
   // Send death notification DM
   if (rewards && interaction) {
