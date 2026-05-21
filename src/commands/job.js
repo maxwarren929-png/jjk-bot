@@ -379,17 +379,17 @@ async function chop(interaction, player) {
   if (chops >= 20) return interaction.editReply('❌ Daily chop limit reached (20). Resets on daily claim.');
 
   const axeLvl = data.axeLevel || 1;
-  const yield = Math.floor(Math.random() * (axeLvl * 2)) + axeLvl;
+  const earned = Math.floor(Math.random() * (axeLvl * 2)) + axeLvl;
   const newHp = Math.max(1, player.hp - 2);
 
   data.lumberjack_chops = chops + 1;
   saveJobData(interaction.user.id, data);
-  db.update(players).set({ yen: player.yen + yield, hp: newHp }).where(eq(players.discord_id, interaction.user.id)).run();
+  db.update(players).set({ yen: player.yen + earned, hp: newHp }).where(eq(players.discord_id, interaction.user.id)).run();
 
   const embed = new EmbedBuilder()
     .setTitle('🪓 Chop!')
     .setColor(0x8B4513)
-    .setDescription(`Found **${yield} 💰**`)
+    .setDescription(`Found **${earned} 💰**`)
     .addFields(
       { name: '📦 Today', value: `${chops + 1}/20`, inline: true },
       { name: '❤️ HP', value: `${newHp}/${player.max_hp}`, inline: true },

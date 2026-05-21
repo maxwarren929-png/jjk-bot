@@ -109,4 +109,26 @@ function leaveClan(player) {
   return { ok: true };
 }
 
-module.exports = { getClan, getClanByName, getMembership, getMembers, createClan, inviteToClan, joinClan, leaveClan };
+function transferLeadership(leader, targetId) {
+  const membership = getMembership(leader.discord_id);
+  if (!membership || membership.role !== 'Leader') return { error: 'You are not a clan leader.' };
+  if (targetId === leader.discord_id) return { error: 'You cannot transfer leadership to yourself.' };
+
+  const targetMembership = getMembership(targetId);
+  if (!targetMembership || targetMembership.clan_id !== membership.clan_id) {
+    return { error: 'Target player is not in your clan.' };
+  }
+
+  const clan = getClan(membership.clan_id);
+  db.update(clan_members).set({ role: 'Member' })
+    .where(and(eq(clan_members.clan_id, clan.id), eq(clan_members.player_id, leader.discord_id)))
+    .run();
+  db.update(clan_members).set({ role: 'Leader' })
+    .where(and(eq(clan_members.clan_id, clan.id), eq(clan_members.player_id, targetId)))
+    .run();
+  db.update(clans).set({ owner_id: targetId }).where(eq(clans.id, clan.id)).run();
+
+  return { ok: true, clan };
+}
+
+module.exports = { getClan, getClanByName, getMembership, getMembers, createClan, inviteToClan, joinClan, leaveClan, transferLeadership };

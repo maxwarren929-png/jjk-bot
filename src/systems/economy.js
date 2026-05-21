@@ -1,4 +1,4 @@
-const { db } = require('../db/index');
+const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 
@@ -77,8 +77,11 @@ function transferYen(fromId, toId, amount) {
   const to = getPlayer(toId);
   if (!from || !to) return { error: 'Player not found.' };
   if (from.yen < amount) return { error: 'Insufficient yen.' };
-  db.update(players).set({ yen: from.yen - amount }).where(eq(players.discord_id, fromId)).run();
-  db.update(players).set({ yen: to.yen + amount }).where(eq(players.discord_id, toId)).run();
+  const txn = sqlite.transaction(() => {
+    db.update(players).set({ yen: from.yen - amount }).where(eq(players.discord_id, fromId)).run();
+    db.update(players).set({ yen: to.yen + amount }).where(eq(players.discord_id, toId)).run();
+  });
+  txn();
   return { ok: true };
 }
 

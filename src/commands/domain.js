@@ -3,6 +3,7 @@ const { db } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 const { getTechniqueById } = require('../systems/techniques');
+const { activateDomain } = require('../systems/domain-state');
 
 const RATE_LIMIT_MS = 30 * 1000;
 const DOMAIN_COST = 150;
@@ -63,6 +64,7 @@ module.exports = {
 
     db.update(players).set({ ce: player.ce - DOMAIN_COST, last_domain_at: now })
       .where(eq(players.discord_id, discordId)).run();
+    activateDomain(discordId);
 
     // Create a temporary channel
     let domainChannel = null;

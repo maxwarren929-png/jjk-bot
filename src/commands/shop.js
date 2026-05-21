@@ -63,11 +63,10 @@ module.exports = {
           new ButtonBuilder().setCustomId('confirm_no').setLabel('❌ No').setStyle(ButtonStyle.Danger),
         );
         await btn.editReply({ embeds: [confirmEmbed], components: [confirmRow] });
-        collector.stop();
 
         try {
           const confirmBtn = await (await interaction.fetchReply()).awaitMessageComponent({
-            filter: i => i.user.id === discordId,
+            filter: i => i.user.id === discordId && ['confirm_yes', 'confirm_no'].includes(i.customId),
             time: 15_000,
           });
           await confirmBtn.deferUpdate();
@@ -85,8 +84,8 @@ module.exports = {
           }
 
           if (result.needsTechniquePick) {
-            await techniquePicker(interaction, confirmBtn, discordId);
             collector.stop();
+            await techniquePicker(interaction, confirmBtn, discordId);
             return;
           }
 

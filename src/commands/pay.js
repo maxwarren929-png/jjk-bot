@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { db } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
+const { transferYen } = require('../systems/economy');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -26,8 +27,8 @@ module.exports = {
 
     if (sender.yen < amount) return interaction.editReply(`❌ You only have **${sender.yen} 💰**.`);
 
-    db.update(players).set({ yen: sender.yen - amount }).where(eq(players.discord_id, senderId)).run();
-    db.update(players).set({ yen: recipient.yen + amount }).where(eq(players.discord_id, target.id)).run();
+    const result = transferYen(senderId, target.id, amount);
+    if (result.error) return interaction.editReply(`❌ ${result.error}`);
 
     const embed = new EmbedBuilder()
       .setTitle('💸 Transfer')

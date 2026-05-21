@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { db } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
-const { createClan, inviteToClan, joinClan, leaveClan, getClanByName, getMembership, getMembers, getClan } = require('../systems/clans');
+const { createClan, inviteToClan, joinClan, leaveClan, getClanByName, getMembership, getMembers, getClan, transferLeadership } = require('../systems/clans');
 
 const PASSIVE_DESC = {
   CE_REGEN:        '+10% CE regeneration per tick',
@@ -23,7 +23,9 @@ module.exports = {
       .addStringOption(o => o.setName('name').setDescription('Clan name').setRequired(true)))
     .addSubcommand(sub => sub.setName('info').setDescription('View clan info')
       .addStringOption(o => o.setName('name').setDescription('Clan name').setRequired(true)))
-    .addSubcommand(sub => sub.setName('leave').setDescription('Leave your current clan')),
+    .addSubcommand(sub => sub.setName('leave').setDescription('Leave your current clan'))
+    .addSubcommand(sub => sub.setName('transfer').setDescription('Transfer clan leadership to another member')
+      .addUserOption(o => o.setName('user').setDescription('New leader').setRequired(true))),
 
   async execute(interaction) {
     await interaction.deferReply();
@@ -83,6 +85,11 @@ module.exports = {
       const result = leaveClan(player);
       if (result.error) { await interaction.editReply(`❌ ${result.error}`); return; }
       await interaction.editReply('✅ You have left your clan.');
+    } else if (sub === 'transfer') {
+      const target = interaction.options.getUser('user');
+      const result = transferLeadership(player, target.id);
+      if (result.error) { await interaction.editReply(`❌ ${result.error}`); return; }
+      await interaction.editReply(`✅ Transferred clan leadership to **${target.username}**.`);
     }
   },
 };

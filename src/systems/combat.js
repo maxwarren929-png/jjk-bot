@@ -5,6 +5,7 @@ const { getTechniqueById, getPlayerTechniques } = require('./techniques');
 const { checkGradeUp } = require('./training');
 const { buildEffectContext, resolveEffects, resolveLegacyStatus } = require('./effects');
 const { executeDiscordActions } = require('./discord-actions');
+const { getDomainMultiplier } = require('./domain-state');
 
 // In-memory cooldown tracking: userId -> { techniqueId -> timestamp }
 const cooldowns = new Map();
@@ -104,6 +105,14 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
     if (tech.status_effect === 'DOUBLE_HIT' && (!tech.effects || tech.effects.length === 0)) {
       damage += Math.floor(damage * 0.7);
       logLine += `⚡ Double strike! `;
+    }
+
+    // Domain Expansion 1.25x damage bonus
+    const domainMult = getDomainMultiplier(actor.discord_id);
+    if (domainMult > 1.0) {
+      const bonusDamage = Math.floor(damage * (domainMult - 1));
+      damage += bonusDamage;
+      logLine += `🔮 *Domain amplification +${bonusDamage} damage!* `;
     }
 
     // Black Flash

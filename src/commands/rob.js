@@ -62,8 +62,9 @@ module.exports = {
       embed.setDescription(`Got caught! Paid **${actualFine} 💰** in fines.`);
     }
 
+    const finalFine = success ? 0 : Math.min(Math.max(10, Math.floor(stealAmount * FAIL_FINE_PCT)), actor.yen);
     embed.addFields(
-      { name: `${interaction.user.username} 💰`, value: `${success ? actor.yen + stealAmount : actor.yen - Math.min(fine, actor.yen)}`, inline: true },
+      { name: `${interaction.user.username} 💰`, value: `${success ? actor.yen + stealAmount : actor.yen - finalFine}`, inline: true },
       { name: `${targetUser.username} 💰`, value: `${success ? target.yen - stealAmount : target.yen}`, inline: true },
     );
 

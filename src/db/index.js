@@ -130,4 +130,4 @@ if (existingCount === 0) {
   console.log(`Seeded ${TECHNIQUES.length} techniques.`);
 }
 
-module.exports = { db };
+module.exports = { db, sqlite };

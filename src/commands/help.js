@@ -49,7 +49,7 @@ module.exports = {
         },
         {
           name: '⚔️ Clans',
-          value: '`/clan create/invite/join/info/leave` — Clan management',
+          value: '`/clan create/invite/join/info/leave/transfer` — Clan management',
           inline: false,
         },
         {

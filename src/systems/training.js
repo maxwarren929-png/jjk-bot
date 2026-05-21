@@ -28,13 +28,15 @@ function startTraining(player, type) {
 }
 
 function completeTraining(player) {
-  if (!player.training_until || player.training_until > Date.now()) return null;
-  const type = player.training_type;
-  const reward = TRAINING_REWARDS[type] ? TRAINING_REWARDS[type](player) : {};
+  // Re-fetch from DB to avoid stale data race
+  const fresh = db.select().from(players).where(eq(players.discord_id, player.discord_id)).get();
+  if (!fresh || !fresh.training_until || fresh.training_until > Date.now()) return null;
+  const type = fresh.training_type;
+  const reward = TRAINING_REWARDS[type] ? TRAINING_REWARDS[type](fresh) : {};
   const update = { training_until: null, training_type: null };
   if (reward.max_ce) update.max_ce = reward.max_ce;
   if (reward.max_hp) update.max_hp = reward.max_hp;
-  db.update(players).set(update).where(eq(players.discord_id, player.discord_id)).run();
+  db.update(players).set(update).where(eq(players.discord_id, fresh.discord_id)).run();
 
   return { type, reward: Object.keys(reward).length > 0 ? reward : null };
 }
