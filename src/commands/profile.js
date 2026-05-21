@@ -6,7 +6,7 @@ const { assignInnate, getTechniqueById } = require('../systems/techniques');
 const { getMembership, getClan, getMembers, getPlayerClanBonus } = require('../systems/clans');
 const { buildBar, buildCeBar } = require('../systems/combat');
 const { getRegenBonus } = require('../systems/training');
-const { formatEquipmentEmbed } = require('../systems/equipment');
+const { formatEquipmentEmbed, getEquipmentBonuses } = require('../systems/equipment');
 
 const PASSIVE_DESC = {
   CE_REGEN:        '+10% CE regeneration per tick',
@@ -100,7 +100,17 @@ module.exports = {
         },
         { name: '⚔️ Clan', value: clan ? `**${clan.name}** (${clanMemberCount} members)\n${PASSIVE_DESC[clan.passive_bonus] || clan.passive_bonus}` : 'Clanless', inline: true },
         { name: '🎭 Reputation', value: player.reputation, inline: true },
-        { name: '⚔️ Equipment', value: formatEquipmentEmbed(discordId), inline: false },
+        { name: '⚔️ Equipment', value: (() => {
+          const eqText = formatEquipmentEmbed(discordId);
+          const b = getEquipmentBonuses(discordId);
+          const lines = [];
+          if (b.bonusDamage > 0) lines.push(`🗡️ +${b.bonusDamage} dmg`);
+          if (b.damageReduction > 0) lines.push(`🛡️ -${Math.round(b.damageReduction * 100)}% dmg`);
+          if (b.bonusMaxCe > 0) lines.push(`💜 +${b.bonusMaxCe} CE`);
+          if (b.bonusMaxHp > 0) lines.push(`❤️ +${b.bonusMaxHp} HP`);
+          const bonusStr = lines.length > 0 ? `\n✨ ${lines.join(' · ')}` : '';
+          return eqText + bonusStr;
+        })(), inline: false },
         { name: '💜 CE / 5min', value: `${formatRegen(player, discordId)}`, inline: true },
         { name: '📅 Sorcerer since', value: `<t:${Math.floor(player.created_at / 1000)}:D>`, inline: false },
       );

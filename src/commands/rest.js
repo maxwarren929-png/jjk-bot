@@ -17,9 +17,18 @@ module.exports = {
     if (!player) return interaction.editReply('❌ Run `/profile` first.');
 
     const job = (() => { try { return JSON.parse(player.job_data || '{}'); } catch { return {}; } })();
-    if (job.__rest_until && job.__rest_until > Date.now()) {
-      const remaining = Math.ceil((job.__rest_until - Date.now()) / 1000);
-      return interaction.editReply(`❌ You are already resting. **${remaining}s** remaining.`);
+    const restUntil = job.__rest_until;
+    if (restUntil && restUntil > Date.now()) {
+      const remaining = restUntil - Date.now();
+      if (remaining > REST_DURATION * 2) {
+        delete job.__rest_until;
+        sqlite.transaction(() => {
+          db.update(players).set({ job_data: JSON.stringify(job) }).where(eq(players.discord_id, interaction.user.id)).run();
+        })();
+      } else {
+        const secs = Math.ceil(remaining / 1000);
+        return interaction.editReply(`❌ You are already resting. **${secs}s** remaining.`);
+      }
     }
 
     if (player.hp >= player.max_hp) return interaction.editReply('❌ Your HP is already full.');

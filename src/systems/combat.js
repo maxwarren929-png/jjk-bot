@@ -169,6 +169,12 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
       logLine += ` ⚔️ *Weapon +${actorBonuses.bonusDamage}!* `;
     }
 
+    // Item bonus damage (Split Soul Katana)
+    if (itemEffects && itemEffects.bonusDamage) {
+      damage += 20;
+      logLine += ` 🗡️ *Split Soul Katana +20 damage!* `;
+    }
+
     // Black Flash
     if (rollBlackFlash()) {
       damage = Math.floor(damage * 1.5);
@@ -341,22 +347,26 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
       // Preserve any __items that were written by item consumption above
       db.update(players).set({ job_data: JSON.stringify(actorJob) }).where(eq(players.discord_id, actor.discord_id)).run();
     }
-    // ELO rating update
+    // ELO rating update (must use latest job_data to preserve mastery write)
     if (!skipTargetDamage && freshTarget && targetState.hp <= 0) {
-      const RATING_K = 32;
-      const actorElo = (() => { try { return JSON.parse(freshActor.job_data || '{}').__elo || 1000; } catch { return 1000; } })();
-      const targetElo = (() => { try { return JSON.parse(freshTarget.job_data || '{}').__elo || 1000; } catch { return 1000; } })();
-      const expected = 1 / (1 + Math.pow(10, (targetElo - actorElo) / 400));
-      const newActorElo = Math.round(actorElo + RATING_K * (1 - expected));
-      const newTargetElo = Math.round(targetElo + RATING_K * (0 - (1 - expected)));
-      const actorJobElo = (() => { try { return JSON.parse(freshActor.job_data || '{}'); } catch { return {}; } })();
-      const targetJobElo = (() => { try { return JSON.parse(freshTarget.job_data || '{}'); } catch { return {}; } })();
-      if (!actorJobElo.__elo) actorJobElo.__elo = 1000;
-      if (!targetJobElo.__elo) targetJobElo.__elo = 1000;
-      actorJobElo.__elo = newActorElo;
-      targetJobElo.__elo = newTargetElo;
-      db.update(players).set({ job_data: JSON.stringify(actorJobElo) }).where(eq(players.discord_id, actor.discord_id)).run();
-      db.update(players).set({ job_data: JSON.stringify(targetJobElo) }).where(eq(players.discord_id, target.discord_id)).run();
+      const eloActor = db.select().from(players).where(eq(players.discord_id, actor.discord_id)).get();
+      const eloTarget = db.select().from(players).where(eq(players.discord_id, target.discord_id)).get();
+      if (eloActor && eloTarget) {
+        const RATING_K = 32;
+        const actorElo = (() => { try { return JSON.parse(freshActor.job_data || '{}').__elo || 1000; } catch { return 1000; } })();
+        const targetElo = (() => { try { return JSON.parse(freshTarget.job_data || '{}').__elo || 1000; } catch { return 1000; } })();
+        const expected = 1 / (1 + Math.pow(10, (targetElo - actorElo) / 400));
+        const newActorElo = Math.round(actorElo + RATING_K * (1 - expected));
+        const newTargetElo = Math.round(targetElo + RATING_K * (0 - (1 - expected)));
+        const actorJobElo = (() => { try { return JSON.parse(eloActor.job_data || '{}'); } catch { return {}; } })();
+        const targetJobElo = (() => { try { return JSON.parse(eloTarget.job_data || '{}'); } catch { return {}; } })();
+        if (!actorJobElo.__elo) actorJobElo.__elo = 1000;
+        if (!targetJobElo.__elo) targetJobElo.__elo = 1000;
+        actorJobElo.__elo = newActorElo;
+        targetJobElo.__elo = newTargetElo;
+        db.update(players).set({ job_data: JSON.stringify(actorJobElo) }).where(eq(players.discord_id, actor.discord_id)).run();
+        db.update(players).set({ job_data: JSON.stringify(targetJobElo) }).where(eq(players.discord_id, target.discord_id)).run();
+      }
     }
     userCDs[techniqueId] = now + tech.cooldown_seconds * 1000;
   })();

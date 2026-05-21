@@ -1,5 +1,3 @@
-const E = {};
-
 // ── Effect Registry ─────────────────────────────────────────────────────────
 const registry = new Map();
 
@@ -282,8 +280,6 @@ function resolveEffects(technique, phase, ctx) {
 }
 
 // ── Legacy Status Resolution (backward compat) ──────────────────────────────
-
-const { getTechniqueById } = require('./techniques');
 
 function resolveLegacyStatus(effect) {
   if (effect === 'RANDOM_COMMAND') {

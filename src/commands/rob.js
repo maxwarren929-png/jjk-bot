@@ -67,6 +67,8 @@ module.exports = {
       })();
       if (newActorYen === undefined) return interaction.editReply('❌ Robbery failed — target or actor not found.');
       embed.setDescription(`Stole **${finalStealAmount} 💰** from **${targetUser.username}**'s wallet.`);
+      // Notify target via DM
+      targetUser.send(`💀 **${interaction.user.username}** robbed **${finalStealAmount} 💰** from your wallet!`).catch(() => {});
     } else {
       let failStealAmount = 0, actualFine = 0;
       try {

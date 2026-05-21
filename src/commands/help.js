@@ -16,6 +16,7 @@ module.exports = {
            name: '👤 Profile & Progression',
           value: '`/profile` — View or create your sorcerer profile (shows equipment)\n'
                + '`/techniques` — View your techniques with mastery\n'
+               + '`/techniqueinfo <technique>` — Detailed technique stats\n'
                + '`/rank` — View your PvP rating and leaderboard position\n'
                + '`/lastfight` — View your most recent combat result\n'
                + '`/cooldowns` — View all active cooldowns\n'
@@ -44,6 +45,7 @@ module.exports = {
                + '`/shop` — Browse and buy items\n'
                + '`/buy <item> [quantity]` — Quick-buy with bulk support\n'
                + '`/stats` — Server-wide statistics\n'
+               + '`/voterewards` — Claim daily voting reward (CE + yen)\n'
                + '`/enhance <slot>` — Upgrade equipped gear with CE\n'
                + '`/bank balance/deposit/withdraw/upgrade` — Manage your cursed bank account\n'
                + '`/bankrob start/join/launch` — Group bank heist\n'
@@ -69,6 +71,7 @@ module.exports = {
            name: '📦 Inventory & Equipment',
           value: '`/inventory view/use/sell/give` — Manage and gift your items\n'
                + '`/inventory equip/unequip` — Equip weapons and armor from your inventory\n'
+               + '`/equipment` — Quick view your current gear and bonuses\n'
                + '`/iteminfo <item>` — View detailed stats on any item\n'
                + '`/collection` — Browse all equipment and items\n'
                + 'Use **HP Potion** & **CE Elixir** to heal instantly. Equip **cursed tools** for combat bonuses.',

@@ -120,8 +120,9 @@ function checkGradeUp(player) {
 }
 
 function failTraining(player) {
-  if (!player.training_until || player.training_until <= Date.now()) return null;
-  const type = player.training_type;
+  const fresh = db.select().from(players).where(eq(players.discord_id, player.discord_id)).get();
+  if (!fresh || !fresh.training_until || fresh.training_until <= Date.now()) return null;
+  const type = fresh.training_type;
   db.update(players)
     .set({ training_until: null, training_type: null })
     .where(eq(players.discord_id, player.discord_id))

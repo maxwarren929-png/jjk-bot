@@ -49,7 +49,7 @@ module.exports = {
     } else if (type === 'bounty') {
       title = '☠️ Bounty Hunter Leaderboard';
       color = 0x2C3E50;
-      all = db.select().from(players).orderBy(desc(players.bounty_kills)).limit(10).all().filter(r => r.bounty_kills > 0);
+      all = db.select().from(players).orderBy(desc(players.bounty_kills)).all().filter(r => r.bounty_kills > 0).slice(0, 10);
       if (!all.length) return interaction.editReply('❌ No bounty kills yet.');
       formatRow = (r, i) => `${medal(i)} <@${r.discord_id}> — **${r.bounty_kills || 0}** bounty kill${(r.bounty_kills || 0) !== 1 ? 's' : ''}\n`;
     } else {

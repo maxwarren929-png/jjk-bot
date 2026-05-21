@@ -46,6 +46,7 @@ module.exports = {
           { name: 'Placed By', value: interaction.user.username, inline: true },
           { name: 'Amount', value: `${result.amount} 💰`, inline: true },
         );
+      targetUser.send(`☠️ A bounty of **${result.amount} 💰** has been placed on you by **${interaction.user.username}**!`).catch(() => {});
       return interaction.editReply({ embeds: [embed] });
     }
 

@@ -19,8 +19,17 @@ module.exports = {
     if (!player) return interaction.editReply('❌ Run `/profile` first.');
 
     const job = (() => { try { return JSON.parse(player.job_data || '{}'); } catch { return {}; } })();
-    if (job.__meditate_until && job.__meditate_until > Date.now()) {
-      return interaction.editReply('❌ You are already meditating. Wait for it to finish.');
+    const meditateUntil = job.__meditate_until;
+    if (meditateUntil && meditateUntil > Date.now()) {
+      const remaining = meditateUntil - Date.now();
+      if (remaining > MEDITATE_DURATION * 2) {
+        delete job.__meditate_until;
+        sqlite.transaction(() => {
+          db.update(players).set({ job_data: JSON.stringify(job) }).where(eq(players.discord_id, interaction.user.id)).run();
+        })();
+      } else {
+        return interaction.editReply('❌ You are already meditating. Wait for it to finish.');
+      }
     }
 
     if (player.ce >= player.max_ce) return interaction.editReply('❌ Your CE is already full.');

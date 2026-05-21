@@ -95,17 +95,9 @@ module.exports = {
       return;
     }
 
-    let itemBonusDmg = 0;
     let silencedTarget = false;
-    if (itemEffects.bonusDamage) {
-      itemBonusDmg = 20;
-    }
     if (itemEffects.silenceTarget) {
       silencedTarget = true;
-    }
-    if (itemBonusDmg > 0 && result.damage > 0) {
-      result.damage += itemBonusDmg;
-      result.log += ` 🗡️ *Split Soul Katana +${itemBonusDmg} damage*`;
     }
     if (silencedTarget) {
       result.log += ` 🔇 *Target silenced — next attack will fizzle!*`;
