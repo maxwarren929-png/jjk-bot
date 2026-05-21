@@ -43,16 +43,18 @@ function applyShopEffect(player, itemId) {
     }
     case 'UPGRADE_ROD': {
       const rodData = JSON.parse(player.job_data || '{}');
-      rodData.rodLevel = (rodData.rodLevel || 1) + 1;
-      if (rodData.rodLevel > 5) return { error: 'Rod is already max level (5).' };
+      const currentRod = rodData.rodLevel || 1;
+      if (currentRod >= 5) return { error: 'Rod is already max level (5).' };
+      rodData.rodLevel = currentRod + 1;
       update.job_data = JSON.stringify(rodData);
       update.yen = player.yen - item.cost;
       break;
     }
     case 'UPGRADE_AXE': {
       const axeData = JSON.parse(player.job_data || '{}');
-      axeData.axeLevel = (axeData.axeLevel || 1) + 1;
-      if (axeData.axeLevel > 5) return { error: 'Axe is already max level (5).' };
+      const currentAxe = axeData.axeLevel || 1;
+      if (currentAxe >= 5) return { error: 'Axe is already max level (5).' };
+      axeData.axeLevel = currentAxe + 1;
       update.job_data = JSON.stringify(axeData);
       update.yen = player.yen - item.cost;
       break;

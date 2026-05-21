@@ -44,7 +44,7 @@ module.exports = {
       .addIntegerOption(opt => opt.setName('amount').setDescription('Yen to bet').setRequired(true).setMinValue(10)))
     .addSubcommand(sub => sub
       .setName('dice')
-      .setDescription('Roll a 6-sided die. Correct = 5x, off by 1 = 2x.')
+      .setDescription('Roll a 6-sided die. Correct = 4x your bet, off by 1 = push.')
       .addIntegerOption(opt => opt.setName('number').setDescription('Guess 1–6').setRequired(true).setMinValue(1).setMaxValue(6))
       .addIntegerOption(opt => opt.setName('amount').setDescription('Yen to bet').setRequired(true).setMinValue(10)))
     .addSubcommand(sub => sub

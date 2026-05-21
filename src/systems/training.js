@@ -36,11 +36,6 @@ function completeTraining(player) {
   if (reward.max_hp) update.max_hp = reward.max_hp;
   db.update(players).set(update).where(eq(players.discord_id, player.discord_id)).run();
 
-  // Movies and Manuals rewards need the caller to handle
-  if (reward._xp) update._xp = true;
-  if (reward._manuals) update._manuals = true;
-  if (reward._isolation) update._isolation = true;
-
   return { type, reward: Object.keys(reward).length > 0 ? reward : null };
 }
 

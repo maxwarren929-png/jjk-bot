@@ -166,14 +166,15 @@ module.exports = {
       const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
       const bankBal = fresh.bank_balance || 0;
       if (amount > bankBal) return interaction.editReply(`❌ You only have **${bankBal.toLocaleString()} 💰** in the bank.`);
-      db.update(players).set({ yen: fresh.yen + amount, bank_balance: bankBal - amount })
+      const newWallet = fresh.yen + amount;
+      db.update(players).set({ yen: newWallet, bank_balance: bankBal - amount })
         .where(eq(players.discord_id, interaction.user.id)).run();
       const embed = new EmbedBuilder()
         .setTitle('🏦 Withdrawal')
         .setColor(0xE74C3C)
         .setDescription(`Withdrew **${amount} 💰**`)
         .addFields(
-          { name: '👛 Wallet', value: `${player.yen + amount} 💰`, inline: true },
+          { name: '👛 Wallet', value: `${newWallet} 💰`, inline: true },
           { name: '🏦 Bank', value: `${bankBal - amount} 💰`, inline: true },
         );
       return interaction.editReply({ embeds: [embed] });

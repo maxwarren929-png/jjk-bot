@@ -31,9 +31,8 @@ module.exports = {
     if (actor.is_broken) return interaction.editReply('❌ You are Broken and cannot rob anyone.');
     if (target.yen < MIN_TARGET_YEN) return interaction.editReply(`❌ **${targetUser.username}** only has ${target.yen} 💰 — not worth the risk.`);
 
-    const lastRob = db.select().from(players).where(eq(players.discord_id, userId)).get().last_robbed_at;
-    if (lastRob && Date.now() - lastRob < COOLDOWN_MS) {
-      const wait = Math.ceil((COOLDOWN_MS - (Date.now() - lastRob)) / 60000);
+    if (actor.last_robbed_at && Date.now() - actor.last_robbed_at < COOLDOWN_MS) {
+      const wait = Math.ceil((COOLDOWN_MS - (Date.now() - actor.last_robbed_at)) / 60000);
       return interaction.editReply(`⏳ Rob cooldown: **${wait}m** remaining.`);
     }
 

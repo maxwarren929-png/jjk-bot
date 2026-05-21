@@ -17,14 +17,22 @@ const REP_COLOR = {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('profile')
-    .setDescription('View your sorcerer profile. Creates one if you are new.'),
+    .setDescription('View your sorcerer profile. Creates one if you are new.')
+    .addUserOption(opt => opt.setName('user').setDescription('Player to view (defaults to you)').setRequired(false)),
 
   async execute(interaction) {
     await interaction.deferReply();
-    const discordId = interaction.user.id;
-    const username = interaction.user.username;
+    const targetUser = interaction.options.getUser('user') || interaction.user;
+    const discordId = targetUser.id;
+    const username = targetUser.username;
 
     let player = db.select().from(players).where(eq(players.discord_id, discordId)).get();
+
+    // Only auto-create profile when viewing self
+    if (!player && targetUser.id !== interaction.user.id) {
+      await interaction.editReply(`❌ **${username}** has no profile yet.`);
+      return;
+    }
 
     if (!player) {
       db.insert(players).values({

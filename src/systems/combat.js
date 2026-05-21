@@ -205,7 +205,7 @@ function applyTechnique(actor, target, techniqueId, interaction = null) {
     executeDiscordActions(tech.discord_actions || (tech.discord_action ? [tech.discord_action] : []), ctx);
   }
 
-  return { ok: true, damage, log: logLine, targetHp: targetState.hp, rewards, actor, target: targetState };
+  return { ok: true, damage, log: logLine, targetHp: targetState.hp, rewards, actor: actorState, target: targetState };
 }
 
 module.exports = { applyTechnique, buildBar, buildCeBar, getTechsForPlayer, getCooldowns };
