@@ -53,11 +53,13 @@ module.exports = {
       .setColor(success ? 0x2ECC71 : 0xE74C3C);
 
     let finalStealAmount = stealAmount;
+    let freshTargetData = null;
     if (success) {
       sqlite.transaction(() => {
         const fTarget = db.select().from(players).where(eq(players.discord_id, targetUser.id)).get();
         const fActor = db.select().from(players).where(eq(players.discord_id, userId)).get();
         if (!fTarget || !fActor) return;
+        freshTargetData = fTarget;
         const actualSteal = Math.min(Math.floor(fTarget.yen * STEAL_PCT), MAX_STEAL);
         finalStealAmount = actualSteal;
         db.update(players).set({ yen: fTarget.yen - actualSteal }).where(eq(players.discord_id, targetUser.id)).run();
@@ -68,7 +70,7 @@ module.exports = {
       if (newActorYen === undefined) return interaction.editReply('❌ Robbery failed — target or actor not found.');
       embed.setDescription(`Stole **${finalStealAmount} 💰** from **${targetUser.username}**'s wallet.`);
       // Notify target via DM
-      const rJob = (() => { try { return JSON.parse(target.job_data || '{}'); } catch { return {}; } })();
+      const rJob = (() => { try { return JSON.parse(freshTargetData?.job_data || target.job_data || '{}'); } catch { return {}; } })();
       const rPrefs = rJob.__notifications || {};
       if (rPrefs.robbery !== false) {
         targetUser.send(`💀 **${interaction.user.username}** robbed **${finalStealAmount} 💰** from your wallet!`).catch(() => {});

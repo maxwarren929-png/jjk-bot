@@ -5,6 +5,7 @@ const { eq } = require('drizzle-orm');
 
 const REST_DURATION = 30_000;
 const REST_HP_PCT = 0.3;
+const activeRests = new Map();
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -44,7 +45,13 @@ module.exports = {
 
     await interaction.editReply(`💤 You start resting. You'll recover **${recover} HP** in **30s**.`);
 
-    setTimeout(async () => {
+    const userId = interaction.user.id;
+    if (activeRests.has(userId)) {
+      clearTimeout(activeRests.get(userId));
+      activeRests.delete(userId);
+    }
+
+    const timeout = setTimeout(async () => {
       try {
         sqlite.transaction(() => {
           const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
@@ -56,6 +63,8 @@ module.exports = {
         })();
         await interaction.followUp({ content: `✅ Rest complete! Recovered **${recover} HP**.`, ephemeral: true });
       } catch { /* ok */ }
+      finally { activeRests.delete(userId); }
     }, REST_DURATION);
+    activeRests.set(userId, timeout);
   },
 };

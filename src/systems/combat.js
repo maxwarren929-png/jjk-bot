@@ -188,6 +188,16 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
       logLine += ` 🛡️ *Armor -${reduced}!* `;
     }
 
+    // Curse debuff: -20% damage if target has an active curse
+    const curseJob = (() => { try { return JSON.parse(target.job_data || '{}'); } catch { return {}; } })();
+    const curses = curseJob.__curses || {};
+    const hasActiveCurse = Object.values(curses).some(c => c.until > Date.now());
+    if (hasActiveCurse) {
+      const curseReduction = Math.floor(damage * 0.2);
+      damage -= curseReduction;
+      logLine += ` ☠️ *Cursed -${curseReduction}!* `;
+    }
+
     targetState.hp = Math.max(0, targetState.hp - damage);
     logLine += `⚔️ **${actor.username}** used **${tech.name}** → **${damage} damage** to **${target.username}** (HP: ${targetState.hp}/${targetState.maxHp})`;
     logLine += ` 💜 CE: ${actorState.ce}/${actorState.maxCe}`;
@@ -352,8 +362,8 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
       const eloTarget = db.select().from(players).where(eq(players.discord_id, target.discord_id)).get();
       if (eloActor && eloTarget) {
         const RATING_K = 32;
-        const actorElo = (() => { try { return JSON.parse(freshActor.job_data || '{}').__elo || 1000; } catch { return 1000; } })();
-        const targetElo = (() => { try { return JSON.parse(freshTarget.job_data || '{}').__elo || 1000; } catch { return 1000; } })();
+        const actorElo = (() => { try { return JSON.parse(eloActor.job_data || '{}').__elo || 1000; } catch { return 1000; } })();
+        const targetElo = (() => { try { return JSON.parse(eloTarget.job_data || '{}').__elo || 1000; } catch { return 1000; } })();
         const expected = 1 / (1 + Math.pow(10, (targetElo - actorElo) / 400));
         const newActorElo = Math.round(actorElo + RATING_K * (1 - expected));
         const newTargetElo = Math.round(targetElo + RATING_K * (0 - (1 - expected)));
@@ -367,12 +377,32 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
         db.update(players).set({ job_data: JSON.stringify(targetJobElo) }).where(eq(players.discord_id, target.discord_id)).run();
       }
     }
+    // Store fight history for both participants (re-fetch to catch all prior writes)
+    if (rewards) {
+      const histActor = db.select().from(players).where(eq(players.discord_id, actor.discord_id)).get();
+      if (histActor) {
+        const haJob = JSON.parse(histActor.job_data || '{}');
+        if (!haJob.__fight_history) haJob.__fight_history = [];
+        haJob.__fight_history.unshift({ timestamp: now, opponent: target.username, opponentId: target.discord_id, technique: tech.name, damage, result: 'win', yenEarned: rewards.yenBonus || 0 });
+        if (haJob.__fight_history.length > 10) haJob.__fight_history.length = 10;
+        db.update(players).set({ job_data: JSON.stringify(haJob) }).where(eq(players.discord_id, actor.discord_id)).run();
+      }
+      const histTarget = db.select().from(players).where(eq(players.discord_id, target.discord_id)).get();
+      if (histTarget) {
+        const htJob = JSON.parse(histTarget.job_data || '{}');
+        if (!htJob.__fight_history) htJob.__fight_history = [];
+        htJob.__fight_history.unshift({ timestamp: now, opponent: actor.username, opponentId: actor.discord_id, technique: tech.name, damage, result: 'loss', yenLost: rewards.yenLoss || 0 });
+        if (htJob.__fight_history.length > 10) htJob.__fight_history.length = 10;
+        db.update(players).set({ job_data: JSON.stringify(htJob) }).where(eq(players.discord_id, target.discord_id)).run();
+      }
+    }
     userCDs[techniqueId] = now + tech.cooldown_seconds * 1000;
   })();
 
   // Send death notification DM
   if (rewards && interaction) {
-    const targetJob = (() => { try { return JSON.parse(target.job_data || '{}'); } catch { return {}; } })();
+    const freshTargetNotify = db.select().from(players).where(eq(players.discord_id, target.discord_id)).get();
+    const targetJob = (() => { try { return JSON.parse(freshTargetNotify?.job_data || '{}'); } catch { return {}; } })();
     const tPrefs = targetJob.__notifications || {};
     if (tPrefs.death !== false) {
       interaction.client.users.fetch(target.discord_id).then(targetUser => {

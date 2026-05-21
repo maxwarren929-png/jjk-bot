@@ -7,6 +7,7 @@ const MEDITATE_DURATION = 60_000;
 const MEDITATE_TICKS = 6;
 const MEDITATE_INTERVAL = MEDITATE_DURATION / MEDITATE_TICKS;
 const MEDITATE_CE_PER_TICK = 15;
+const activeMeditations = new Map();
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -44,6 +45,12 @@ module.exports = {
 
     await interaction.editReply('🧘 You begin meditating, focusing your cursed energy. You will recover CE every 10s for 60s.');
 
+    const userId = interaction.user.id;
+    if (activeMeditations.has(userId)) {
+      clearInterval(activeMeditations.get(userId));
+      activeMeditations.delete(userId);
+    }
+
     let tick = 0;
     const interval = setInterval(async () => {
       tick++;
@@ -58,13 +65,15 @@ module.exports = {
           await interaction.followUp({ content: `✨ +**${MEDITATE_CE_PER_TICK}** CE recovered... (${tick}/${MEDITATE_TICKS})`, ephemeral: true });
         } else {
           clearInterval(interval);
+          activeMeditations.delete(userId);
           const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
           const fJob = (() => { try { return JSON.parse(fresh?.job_data || '{}'); } catch { return {}; } })();
           delete fJob.__meditate_until;
           db.update(players).set({ job_data: JSON.stringify(fJob) }).where(eq(players.discord_id, interaction.user.id)).run();
           await interaction.followUp({ content: `✅ Meditation complete! Total **${MEDITATE_CE_PER_TICK * MEDITATE_TICKS} CE** recovered.`, ephemeral: true });
         }
-      } catch { clearInterval(interval); }
+      } catch { clearInterval(interval); activeMeditations.delete(userId); }
     }, MEDITATE_INTERVAL);
+    activeMeditations.set(userId, interval);
   },
 };

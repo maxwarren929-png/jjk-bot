@@ -65,6 +65,7 @@ module.exports = {
     sqlite.transaction(() => {
       const freshPlayer = db.select().from(players).where(eq(players.discord_id, discordId)).get();
       if (!freshPlayer || freshPlayer.ce < DOMAIN_COST) return;
+      if (freshPlayer.last_domain_at && now - freshPlayer.last_domain_at < RATE_LIMIT_MS) return;
       db.update(players).set({ ce: freshPlayer.ce - DOMAIN_COST, last_domain_at: now })
         .where(eq(players.discord_id, discordId)).run();
     })();

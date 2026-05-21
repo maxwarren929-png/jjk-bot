@@ -67,9 +67,11 @@ function unequipItem(discordId, slot) {
 }
 
 function getEquipmentBonuses(discordId) {
-  const eq = getEquipment(discordId);
   const player = db.select().from(players).where(eq(players.discord_id, discordId)).get();
-  const enh = player ? (safeParse(player.job_data).__enhancements || {}) : {};
+  if (!player) return { bonusDamage: 0, damageReduction: 0, bonusMaxCe: 0, bonusMaxHp: 0 };
+  const job = safeParse(player.job_data);
+  const eq = job.__equipment || {};
+  const enh = job.__enhancements || {};
   const bonuses = { bonusDamage: 0, damageReduction: 0, bonusMaxCe: 0, bonusMaxHp: 0 };
   for (const key of Object.values(eq)) {
     const level = enh[key] || 0;

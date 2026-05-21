@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { db, sqlite } = require('../db/index');
+const { db } = require('../db/index');
 const { players, bounties } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 const { placeBounty, listBounties, cancelBounties } = require('../systems/bounties');

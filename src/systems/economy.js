@@ -108,9 +108,6 @@ function applyShopEffect(player, itemId) {
 }
 
 function transferYen(fromId, toId, amount) {
-  const from = getPlayer(fromId);
-  const to = getPlayer(toId);
-  if (!from || !to) return { error: 'Player not found.' };
   let result = null;
   try {
     sqlite.transaction(() => {

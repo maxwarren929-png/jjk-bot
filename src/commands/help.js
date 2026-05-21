@@ -26,7 +26,8 @@ module.exports = {
                + '`/train status` — Check training progress\n'
                + '`/train cancel` — Cancel current training (no refund)\n'
                + '`/reset` — Permanently delete your profile and start over\n'
-               + '`/leaderboard` — Top players by wealth, wins, grade, or bounty kills\n'
+                + '`/leaderboard` — Top players by wealth, wins, grade, or bounty kills\n'
+                + '`/history` — View your recent PvP fight history\n'
                + '`/rankup` — Check grade progression requirements\n'
                + '`/achievements` — View your earned achievements and progress',
           inline: false,
@@ -36,8 +37,10 @@ module.exports = {
           value: '`/use <technique> <target>` — Use a technique on someone\n'
                + '`/spar <opponent>` — Practice combat against AI (no rewards/penalties)\n'
                + '`/domain` — Domain Expansion (Grade 2+, costs 150 CE)\n'
-               + '`/rob <target>` — Try to steal wallet yen (1h cooldown)\n'
-               + '`/hunt` — Hunt cursed spirits for CE, yen, and items (30m cooldown)',
+                + '`/rob <target>` — Try to steal wallet yen (1h cooldown)\n'
+                + '`/hunt` — Hunt cursed spirits for CE, yen, and items (30m cooldown)\n'
+                + '`/curse <target>` — Place a debuff on a player (-20% dmg, 2 min)\n'
+                + '`/bless <target> <amount>` — Heal a player by spending CE',
           inline: false,
         },
         {
@@ -53,7 +56,9 @@ module.exports = {
                + '`/enhance <slot>` — Upgrade equipped gear with CE\n'
                + '`/bank balance/deposit/withdraw/upgrade` — Manage your cursed bank account\n'
                + '`/bankrob start/join/launch` — Group bank heist\n'
-               + '`/pay <user> <amount>` — Send yen\n'
+                + '`/pay <user> <amount>` — Send yen\n'
+                + '`/donate <target> <item>` — Give an inventory item to another player\n'
+                + '`/scavenge` — Search for items or yen (5m cooldown)\n'
                + '`/bounty place/list/cancel/check/top/placed` — Place, view, cancel, or top bounties\n'
                + '`/gamble coinflip/dice/blackjack` — Test your luck',
           inline: false,
