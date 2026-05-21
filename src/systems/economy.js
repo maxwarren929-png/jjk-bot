@@ -25,10 +25,11 @@ function applyShopEffect(player, itemId) {
   const item = SHOP_CATALOG.find(i => i.id === itemId);
   if (!item) return { error: 'Item not found.' };
 
+  let result = null;
   try {
-    sqlite.transaction(() => {
+    const txnResult = sqlite.transaction(() => {
       const fresh = db.select().from(players).where(eq(players.discord_id, player.discord_id)).get();
-      if (!fresh) return;
+      if (!fresh) return { error: 'Player not found.' };
       if (fresh.yen < item.cost) return { error: `Not enough yen. Need **${item.cost}** 💰, have **${fresh.yen}** 💰.` };
 
       const update = { yen: fresh.yen - item.cost };
@@ -69,17 +70,18 @@ function applyShopEffect(player, itemId) {
           break;
         }
         case 'UNLOCK_ANY':
-          // handled by caller after transaction
           break;
       }
 
       db.update(players).set(update).where(eq(players.discord_id, player.discord_id)).run();
+      return { ok: true, item };
     })();
+    result = txnResult;
   } catch (err) {
     console.error(`[${new Date().toISOString()}] economy.js: applyShopEffect txn failed — ${err.message}`);
   }
 
-  return { ok: true, item };
+  return result || { error: 'Transaction failed. Try again.' };
 }
 
 function transferYen(fromId, toId, amount) {

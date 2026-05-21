@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 const { db } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
-const { createClan, inviteToClan, joinClan, leaveClan, getClanByName, getMembership, getMembers, getClan, transferLeadership, kickFromClan, renameClan, disbandClan, getPendingInvites, setPassive, PASSIVE_OPTIONS, PASSIVE_COST } = require('../systems/clans');
+const { createClan, inviteToClan, joinClan, leaveClan, getClanByName, getMembership, getMembers, getClan, transferLeadership, kickFromClan, renameClan, disbandClan, getPendingInvites, setPassive, setInviteOnly, setDescription, PASSIVE_OPTIONS, PASSIVE_COST } = require('../systems/clans');
 
 const PASSIVE_DESC = {
   CE_REGEN:        '+10% CE regeneration per tick',
@@ -41,7 +41,11 @@ module.exports = {
           { name: 'YEN_BOOST: +10% fight yen', value: 'YEN_BOOST' },
           { name: 'DAMAGE_BOOST: +5% damage', value: 'DAMAGE_BOOST' },
           { name: 'DEATH_REDUCTION: -10% death penalty', value: 'DEATH_REDUCTION' },
-        ))),
+        )))
+    .addSubcommand(sub => sub.setName('setinviteonly').setDescription('Toggle invite-only mode (leader only).')
+      .addBooleanOption(o => o.setName('enabled').setDescription('Invite-only on or off').setRequired(true)))
+    .addSubcommand(sub => sub.setName('setdescription').setDescription('Set your clan description (leader only, max 200 chars).')
+      .addStringOption(o => o.setName('text').setDescription('New description').setRequired(true))),
 
   async execute(interaction) {
     await interaction.deferReply();
@@ -96,8 +100,10 @@ module.exports = {
           { name: '📊 Members', value: `${members.length}/${limit}`, inline: true },
           { name: '🎁 Passive Bonus', value: PASSIVE_DESC[clan.passive_bonus] || clan.passive_bonus, inline: true },
           { name: '🔒 Invite Only', value: clan.invite_only ? 'Yes' : 'No', inline: true },
-          { name: '👥 Member List', value: memberList.slice(0, 1024) || 'None', inline: false },
+          { name: '📅 Founded', value: `<t:${Math.floor(clan.created_at / 1000)}:D>`, inline: true },
         );
+      if (clan.description) embed.addFields({ name: '📝 Description', value: clan.description, inline: false });
+      embed.addFields({ name: '👥 Member List', value: memberList.slice(0, 1024) || 'None', inline: false });
       await interaction.editReply({ embeds: [embed] });
 
     } else if (sub === 'members') {
@@ -170,6 +176,16 @@ module.exports = {
         .setDescription(`**${result.oldPassive}** → **${result.newPassive}** (cost: ${PASSIVE_COST} 💰)`)
         .addFields({ name: '🎁 New Passive', value: PASSIVE_DESC[result.newPassive] || result.newPassive, inline: false });
       await interaction.editReply({ embeds: [embed] });
+    } else if (sub === 'setinviteonly') {
+      const enabled = interaction.options.getBoolean('enabled');
+      const result = setInviteOnly(player, enabled);
+      if (result.error) { await interaction.editReply(`❌ ${result.error}`); return; }
+      await interaction.editReply(`✅ **${result.name}** is now ${enabled ? '🔒 invite-only' : '🔓 open to all'}.`);
+    } else if (sub === 'setdescription') {
+      const text = interaction.options.getString('text');
+      const result = setDescription(player, text);
+      if (result.error) { await interaction.editReply(`❌ ${result.error}`); return; }
+      await interaction.editReply(`✅ **${result.name}** description updated.`);
     } else if (sub === 'disband') {
       const membership = getMembership(interaction.user.id);
       if (!membership || membership.role !== 'Leader') {

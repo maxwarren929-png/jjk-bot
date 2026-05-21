@@ -52,10 +52,15 @@ module.exports = {
       if (bounties.length === 0) return interaction.editReply('❌ No active bounties.');
 
       const sorted = bounties.sort((a, b) => b.total - a.total);
+      const all = db.select().from(bounties).all();
+      const countMap = {};
+      for (const b of all) {
+        countMap[b.target_id] = (countMap[b.target_id] || 0) + 1;
+      }
       const embed = new EmbedBuilder()
-        .setTitle(`💰 Active Bounties (${bounties.length})`)
+        .setTitle(`💰 Active Bounties (${bounties.length} targets)`)
         .setColor(0xF1C40F)
-        .setDescription(sorted.map(b => `<@${b.targetId}> — **${b.total.toLocaleString()} 💰**`).join('\n'));
+        .setDescription(sorted.map(b => `<@${b.targetId}> — **${b.total.toLocaleString()} 💰** (${countMap[b.targetId] || 0} bounty${(countMap[b.targetId] || 0) !== 1 ? 'ies' : 'y'})`).join('\n'));
       return interaction.editReply({ embeds: [embed] });
     }
 

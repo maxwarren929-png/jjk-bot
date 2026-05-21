@@ -35,9 +35,10 @@ function createClan(player, name) {
 
   const passive = PASSIVE_OPTIONS[Math.floor(Math.random() * PASSIVE_OPTIONS.length)];
   let result;
+  let error;
   sqlite.transaction(() => {
     const freshPlayer = db.select().from(players).where(eq(players.discord_id, player.discord_id)).get();
-    if (!freshPlayer || freshPlayer.yen < CLAN_COST) return;
+    if (!freshPlayer || freshPlayer.yen < CLAN_COST) { error = 'Not enough yen. Clan creation costs 500 💰.'; return; }
     result = db.insert(clans).values({
       name,
       owner_id: player.discord_id,
@@ -56,6 +57,7 @@ function createClan(player, name) {
       .where(eq(players.discord_id, player.discord_id)).run();
   })();
 
+  if (error) return { error };
   return { ok: true, clan: result };
 }
 
@@ -223,4 +225,21 @@ function setPassive(leader, passiveId) {
   return result;
 }
 
-module.exports = { getClan, getClanByName, getMembership, getMembers, createClan, inviteToClan, joinClan, leaveClan, transferLeadership, kickFromClan, renameClan, disbandClan, getPlayerClanBonus, getPendingInvites, setPassive, PASSIVE_OPTIONS, PASSIVE_COST };
+function setInviteOnly(leader, inviteOnly) {
+  const membership = getMembership(leader.discord_id);
+  if (!membership || membership.role !== 'Leader') return { error: 'You are not a clan leader.' };
+  const clan = getClan(membership.clan_id);
+  db.update(clans).set({ invite_only: inviteOnly }).where(eq(clans.id, clan.id)).run();
+  return { ok: true, name: clan.name, inviteOnly };
+}
+
+function setDescription(leader, description) {
+  const membership = getMembership(leader.discord_id);
+  if (!membership || membership.role !== 'Leader') return { error: 'You are not a clan leader.' };
+  if (description.length > 200) return { error: 'Description must be 200 characters or fewer.' };
+  const clan = getClan(membership.clan_id);
+  db.update(clans).set({ description }).where(eq(clans.id, clan.id)).run();
+  return { ok: true, name: clan.name, description };
+}
+
+module.exports = { getClan, getClanByName, getMembership, getMembers, createClan, inviteToClan, joinClan, leaveClan, transferLeadership, kickFromClan, renameClan, disbandClan, getPlayerClanBonus, getPendingInvites, setPassive, setInviteOnly, setDescription, PASSIVE_OPTIONS, PASSIVE_COST };

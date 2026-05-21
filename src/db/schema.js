@@ -56,6 +56,7 @@ const clans = sqliteTable('clans', {
   passive_bonus: text('passive_bonus').notNull().default('CE_REGEN'),
   member_limit: integer('member_limit').notNull().default(20),
   invite_only: integer('invite_only', { mode: 'boolean' }).notNull().default(false),
+  description: text('description').notNull().default(''),
   created_at: integer('created_at').notNull().$defaultFn(() => Date.now()),
 });
 
