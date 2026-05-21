@@ -128,9 +128,10 @@ function transferYen(fromId, toId, amount) {
 
 const CONSUMABLE_EFFECTS = ['CE_RESTORE_50', 'HP_RESTORE_100', 'CE_RESTORE_30', 'SILENCE_NEXT', 'BONUS_DAMAGE_20', 'EXIT_BROKEN'];
 
-function sellItem(player, effectKey) {
+function sellItem(player, effectKey, quantity = 1) {
   const item = SHOP_CATALOG.find(i => i.effect === effectKey);
   if (!item) return { error: 'Item cannot be sold.' };
+  if (quantity < 1) return { error: 'Quantity must be at least 1.' };
 
   const sellPrice = Math.floor(item.cost * 0.5);
   let result = null;
@@ -141,13 +142,19 @@ function sellItem(player, effectKey) {
       if (!fresh) { result = { error: 'Profile not found.' }; return; }
       const data = safeParse(fresh.job_data);
       const items = data.__items || [];
-      const idx = items.indexOf(effectKey);
-      if (idx === -1) { result = { error: `You don't have a **${item.name}** to sell.` }; return; }
-      items.splice(idx, 1);
+      let sold = 0;
+      for (let i = 0; i < quantity; i++) {
+        const idx = items.indexOf(effectKey);
+        if (idx === -1) break;
+        items.splice(idx, 1);
+        sold++;
+      }
+      if (sold === 0) { result = { error: `You don't have a **${item.name}** to sell.` }; return; }
       data.__items = items;
-      db.update(players).set({ yen: fresh.yen + sellPrice, job_data: JSON.stringify(data) })
+      const totalPrice = sellPrice * sold;
+      db.update(players).set({ yen: fresh.yen + totalPrice, job_data: JSON.stringify(data) })
         .where(eq(players.discord_id, player.discord_id)).run();
-      result = { ok: true, item: item.name, price: sellPrice };
+      result = { ok: true, item: item.name, price: sellPrice, quantity: sold, total: totalPrice };
     })();
   } catch (err) {
     console.error(`[${new Date().toISOString()}] economy.js: sellItem txn failed — ${err.message}`);

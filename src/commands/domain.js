@@ -62,13 +62,16 @@ module.exports = {
     const innate = getTechniqueById(player.innate_technique_id);
     const lore = DOMAIN_LORE[player.innate_technique_id] || { name: `${innate?.name || 'Unknown'} Domain`, desc: 'The cursed energy coalesces into a pocket reality.' };
 
+    let deducted = false;
     sqlite.transaction(() => {
       const freshPlayer = db.select().from(players).where(eq(players.discord_id, discordId)).get();
       if (!freshPlayer || freshPlayer.ce < DOMAIN_COST) return;
       if (freshPlayer.last_domain_at && now - freshPlayer.last_domain_at < RATE_LIMIT_MS) return;
       db.update(players).set({ ce: freshPlayer.ce - DOMAIN_COST, last_domain_at: now })
         .where(eq(players.discord_id, discordId)).run();
+      deducted = true;
     })();
+    if (!deducted) return interaction.editReply('❌ Domain Expansion failed — insufficient CE or on cooldown.');
     activateDomain(discordId);
 
     // Create a temporary channel

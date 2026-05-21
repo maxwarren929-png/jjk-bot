@@ -13,8 +13,8 @@ function defineEffect(id, handler) {
 defineEffect('damage', {
   phases: ['onHit'],
   resolve(ctx, config) {
-    const min = config.min ?? 0;
-    const max = config.max ?? 0;
+    const min = Math.min(config.min ?? 0, config.max ?? 0);
+    const max = Math.max(config.min ?? 0, config.max ?? 0);
     if (max <= 0) return 0;
     const dmg = Math.floor(Math.random() * (max - min + 1)) + min;
     return { damage: dmg, log: null };
@@ -87,7 +87,9 @@ defineEffect('cooldown_reset', {
   phases: ['onUse'],
   resolve(ctx, config) {
     const who = config.target === 'self' ? ctx.actor : (config.target === 'enemy' ? ctx.target : ctx.actor);
-    who.cooldowns = {};
+    for (const key of Object.keys(who.cooldowns)) {
+      who.cooldowns[key] = 0;
+    }
     return { log: `⏱️ *Cooldowns reset for ${who === ctx.actor ? 'self' : 'enemy'}*` };
   },
 });
@@ -96,9 +98,11 @@ defineEffect('cooldown_extend', {
   phases: ['onUse'],
   resolve(ctx, config) {
     const seconds = config.seconds ?? 10;
-    for (const key of Object.keys(ctx.target.cooldowns)) {
-      if (ctx.target.cooldowns[key] > Date.now()) {
-        ctx.target.cooldowns[key] += seconds * 1000;
+    const targetCDs = ctx.target?.cooldowns;
+    if (!targetCDs) return {};
+    for (const key of Object.keys(targetCDs)) {
+      if (targetCDs[key] > Date.now()) {
+        targetCDs[key] += seconds * 1000;
       }
     }
     return { log: `⏱️ *Enemy cooldowns extended by ${seconds}s*` };

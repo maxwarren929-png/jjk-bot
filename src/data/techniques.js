@@ -315,7 +315,7 @@ const TECHNIQUES = [
     lore: 'Hanami speaks the language of the earth.',
     effects: [{ use: 'damage', with: { min: 35, max: 55 } }, { use: 'apply_status', with: { status: 'FREEZE' } }],
     discord_actions: [
-      { type: 'slowmode', seconds: 20 },
+      { type: 'slowmode', seconds: 20, duration: 20 },
       { type: 'set_topic', topic: 'Rooted by Cursed Vines' },
     ],
   },

@@ -32,10 +32,12 @@ function getLockedVariants(player) {
 
 function unlockTechnique(discordId, techniqueId) {
   const player = db.select().from(players).where(eq(players.discord_id, discordId)).get();
+  if (!player) return { error: 'Player not found.' };
   const unlocked = safeParseArray(player.unlocked_techniques);
   if (!unlocked.includes(techniqueId)) unlocked.push(techniqueId);
   db.update(players).set({ unlocked_techniques: JSON.stringify(unlocked) })
     .where(eq(players.discord_id, discordId)).run();
+  return { ok: true };
 }
 
 function getTechniqueById(id) {

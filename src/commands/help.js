@@ -44,6 +44,11 @@ module.exports = {
                 + '`/curseinfo` — Check your active curses and debuffs\n'
                 + '`/rebuke` — Remove active curses by spending CE\n'
                 + '`/sacrifice <hp>` — Convert HP to CE (2:1 ratio)\n'
+                + '`/heal <hp>` — Use Reverse Cursed Technique to convert CE → HP (1:3)\n'
+                + '`/vow` — Binding Vow: sacrifice HP for +25% damage on next fight\n'
+                + '`/focus` — Sacrifice HP to boost CE regen for 5 min\n'
+                + '`/patrol` — Go on a 15m patrol for passive yen\n'
+                + '`/record` — View your detailed combat record and statistics\n'
                 + '`/bless <target> <amount>` — Heal a player by spending CE',
           inline: false,
         },
@@ -59,7 +64,9 @@ module.exports = {
                + '`/today` — Daily activity summary\n'
                + '`/voterewards` — Claim daily voting reward (CE + yen)\n'
                + '`/enhance <slot>` — Upgrade equipped gear with CE\n'
-               + '`/bank balance/deposit/withdraw/upgrade` — Manage your cursed bank account\n'
+                + '`/vault balance/deposit/withdraw` — Protected yen storage that survives death\n'
+                + '`/lock create/claim/list` — Lock yen for 24h to earn 5% interest\n'
+                + '`/bank balance/deposit/withdraw/upgrade` — Manage your cursed bank account\n'
                + '`/bankrob start/join/launch` — Group bank heist\n'
                 + '`/pay <user> <amount>` — Send yen\n'
                 + '`/donate <target> <item>` — Give an inventory item to another player\n'
@@ -83,8 +90,11 @@ module.exports = {
         },
         {
            name: '📦 Inventory & Equipment',
-          value: '`/inventory view/use/sell/give` — Manage and gift your items\n'
-               + '`/inventory equip/unequip` — Equip weapons and armor from your inventory\n'
+           value: '`/inventory view/use/sell/give` — Manage and gift your items\n'
+                + '`/trash` — Delete an item from inventory (no refund)\n'
+                + '`/compact` — Combine 3 identical items to free inventory space\n'
+                + '`/whisper <target> <message>` — Send an anonymous message (costs CE)\n'
+                + '`/inventory equip/unequip` — Equip weapons and armor from your inventory\n'
                + '`/equipment` — Quick view your current gear and bonuses\n'
                + '`/iteminfo <item>` — View detailed stats on any item\n'
                + '`/collection` — Browse all equipment and items\n'

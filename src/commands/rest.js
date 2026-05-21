@@ -33,13 +33,14 @@ module.exports = {
           return interaction.editReply(`❌ You are already resting. **${secs}s** remaining.`);
         }
       } else {
-        delete job.__rest_until;
         sqlite.transaction(() => {
           const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
           if (!fresh) return;
+          const fJob = (() => { try { return JSON.parse(fresh.job_data || '{}'); } catch { return {}; } })();
+          delete fJob.__rest_until;
           const missedRecover = Math.floor(fresh.max_hp * REST_HP_PCT);
           const newHp = Math.min(fresh.hp + missedRecover, fresh.max_hp);
-          db.update(players).set({ hp: newHp, job_data: JSON.stringify(job) }).where(eq(players.discord_id, interaction.user.id)).run();
+          db.update(players).set({ hp: newHp, job_data: JSON.stringify(fJob) }).where(eq(players.discord_id, interaction.user.id)).run();
         })();
         await interaction.editReply('💤 You recovered from a previous rest that was interrupted!');
         return;

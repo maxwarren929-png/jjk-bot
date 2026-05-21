@@ -4,7 +4,7 @@ const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 const { getEquipmentBonuses } = require('../systems/equipment');
 const { getTechsForPlayer } = require('../systems/combat');
-const { GRADE_ORDER } = require('../data/techniques');
+const GRADE_ORDER = ['Grade 4', 'Grade 3', 'Grade 2', 'Grade 1', 'Semi-Special Grade', 'Special Grade'];
 
 function safeParse(val) {
   try { return JSON.parse(val || '{}'); } catch { return {}; }
@@ -29,7 +29,7 @@ module.exports = {
     const maxHp = player.max_hp + (bonuses.bonusMaxHp || 0);
     const maxCe = player.max_ce + (bonuses.bonusMaxCe || 0);
     const job = safeParse(player.job_data);
-    const elo = job.__elo || 1000;
+    const elo = job.__elo ?? 1000;
     const techs = getTechsForPlayer(player);
     const techList = techs.length > 0 ? techs.slice(0, 5).map(t => t.name).join(', ') : 'None';
 

@@ -55,9 +55,10 @@ module.exports = {
         )))
     .addSubcommand(sub => sub
       .setName('sell')
-      .setDescription('Sell a combat item for 50% of its value.')
+      .setDescription('Sell combat items for 50% of their value.')
       .addStringOption(opt => opt.setName('item').setDescription('Item to sell').setRequired(true)
-        .addChoices(...SELLABLE_ITEMS.map(i => ({ name: i.name, value: i.value })))))
+        .addChoices(...SELLABLE_ITEMS.map(i => ({ name: i.name, value: i.value }))))
+      .addIntegerOption(opt => opt.setName('quantity').setDescription('How many to sell (default 1)').setRequired(false).setMinValue(1).setMaxValue(999)))
     .addSubcommand(sub => sub
       .setName('give')
       .setDescription('Give an item to another player.')
@@ -115,7 +116,9 @@ module.exports = {
     const items = jobData.__items || [];
 
     if (items.length > 0) {
-      const itemList = items.map(k => `• ${ITEM_NAMES[k]?.name || k}`).join('\n');
+      const counts = {};
+      for (const k of items) counts[k] = (counts[k] || 0) + 1;
+      const itemList = Object.entries(counts).map(([k, c]) => `• ${ITEM_NAMES[k]?.name || k}${c > 1 ? ` (x${c})` : ''}`).join('\n');
       const totalSell = items.reduce((sum, k) => sum + getSellPrice(k), 0);
       if (totalSell > 0) {
         embed.addFields({ name: '⚔️ Combat Items', value: `${itemList}\n\n💰 **Sell all for ${totalSell.toLocaleString()} 💰** (\`/inventory sell\`)`, inline: false });
@@ -163,15 +166,20 @@ module.exports = {
 async function sellItem(interaction) {
   await interaction.deferReply();
   const itemKey = interaction.options.getString('item');
+  const quantity = interaction.options.getInteger('quantity') || 1;
   const player = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
   if (!player) return interaction.editReply('❌ Run `/profile` first.');
   const { sellItem: doSell } = require('../systems/economy');
-  const result = doSell(player, itemKey);
+  const result = doSell(player, itemKey, quantity);
   if (result.error) return interaction.editReply(`❌ ${result.error}`);
   const embed = new EmbedBuilder()
     .setTitle('💰 Item Sold')
-    .setColor(0x2ECC71)
-    .setDescription(`Sold **${result.item}** for **${result.price} 💰** (50% of cost).`);
+    .setColor(0x2ECC71);
+  if (result.quantity > 1) {
+    embed.setDescription(`Sold **${result.quantity}x ${result.item}** for **${result.total} 💰** (${result.price} 💰 each).`);
+  } else {
+    embed.setDescription(`Sold **${result.item}** for **${result.price} 💰** (50% of cost).`);
+  }
   await interaction.editReply({ embeds: [embed] });
 }
 
@@ -190,6 +198,9 @@ async function giveItem(interaction) {
   let transferred = false;
   let failReason = 'Item not found in your inventory.';
   sqlite.transaction(() => {
+    const recv = db.select().from(players).where(eq(players.discord_id, targetUser.id)).get();
+    if (!recv) { failReason = `❌ **${targetUser.username}** has no profile.`; return; }
+
     const giver = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
     if (!giver) { failReason = '❌ Your profile was not found. Run `/profile` first.'; return; }
     const giverJob = (() => { try { return JSON.parse(giver.job_data || '{}'); } catch { return {}; } })();
@@ -200,8 +211,6 @@ async function giveItem(interaction) {
     giverJob.__items = giverItems;
     db.update(players).set({ job_data: JSON.stringify(giverJob) }).where(eq(players.discord_id, interaction.user.id)).run();
 
-    const recv = db.select().from(players).where(eq(players.discord_id, targetUser.id)).get();
-    if (!recv) { failReason = `❌ **${targetUser.username}** has no profile.`; return; }
     const recvJob = (() => { try { return JSON.parse(recv.job_data || '{}'); } catch { return {}; } })();
     if (!recvJob.__items) recvJob.__items = [];
     if (!recvJob.__items.includes(itemKey)) recvJob.__items.push(itemKey);
@@ -227,46 +236,48 @@ async function useItem(interaction) {
   const resultText = USEABLE_ITEMS[itemKey]?.desc || '';
 
   let skipped = null;
-  sqlite.transaction(() => {
-    const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
-    if (!fresh) return;
-    const freshJob = (() => { try { return JSON.parse(fresh.job_data || '{}'); } catch { return {}; } })();
-    const freshItems = freshJob.__items || [];
-    const fIdx = freshItems.indexOf(itemKey);
-    if (fIdx === -1) { skipped = `❌ You don't have a **${(USEABLE_ITEMS[itemKey]?.name) || itemKey}**.`; return; }
+  try {
+    sqlite.transaction(() => {
+      const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+      if (!fresh) return;
+      const freshJob = (() => { try { return JSON.parse(fresh.job_data || '{}'); } catch { return {}; } })();
+      const freshItems = freshJob.__items || [];
+      const fIdx = freshItems.indexOf(itemKey);
+      if (fIdx === -1) { skipped = `❌ You don't have a **${(USEABLE_ITEMS[itemKey]?.name) || itemKey}**.`; return; }
 
-    if (itemKey === 'CE_RESTORE_50' || itemKey === 'CE_RESTORE_30') {
-      if (fresh.ce >= fresh.max_ce) {
-        skipped = 'Your CE is already full. Save it for later.';
-        return;
+      if (itemKey === 'CE_RESTORE_50' || itemKey === 'CE_RESTORE_30') {
+        if (fresh.ce >= fresh.max_ce) {
+          skipped = 'Your CE is already full. Save it for later.';
+          return;
+        }
       }
-    }
 
-    if (itemKey === 'HP_RESTORE_100') {
-      if (fresh.hp >= fresh.max_hp) {
-        skipped = 'Your HP is already full. Save it for later.';
-        return;
+      if (itemKey === 'HP_RESTORE_100') {
+        if (fresh.hp >= fresh.max_hp) {
+          skipped = 'Your HP is already full. Save it for later.';
+          return;
+        }
       }
-    }
 
-    if (itemKey === 'EXIT_BROKEN') {
-      if (!fresh.is_broken) {
-        skipped = 'You are not Broken. No need for a Healing Vial.';
-        return;
+      if (itemKey === 'EXIT_BROKEN') {
+        if (!fresh.is_broken) {
+          skipped = 'You are not Broken. No need for a Healing Vial.';
+          return;
+        }
       }
-    }
 
-    freshItems.splice(fIdx, 1);
-    freshJob.__items = freshItems;
+      freshItems.splice(fIdx, 1);
+      freshJob.__items = freshItems;
 
-    const update = {};
-    if (itemKey === 'CE_RESTORE_50') update.ce = Math.min(fresh.ce + 50, fresh.max_ce);
-    if (itemKey === 'CE_RESTORE_30') update.ce = Math.min(fresh.ce + 30, fresh.max_ce);
-    if (itemKey === 'HP_RESTORE_100') update.hp = Math.min(fresh.hp + 100, fresh.max_hp);
-    if (itemKey === 'EXIT_BROKEN') { update.is_broken = false; update.broken_until = null; update.hp = Math.min(fresh.hp + 50, fresh.max_hp); }
-    update.job_data = JSON.stringify(freshJob);
-    db.update(players).set(update).where(eq(players.discord_id, interaction.user.id)).run();
-  })();
+      const update = {};
+      if (itemKey === 'CE_RESTORE_50') update.ce = Math.min(fresh.ce + 50, fresh.max_ce);
+      if (itemKey === 'CE_RESTORE_30') update.ce = Math.min(fresh.ce + 30, fresh.max_ce);
+      if (itemKey === 'HP_RESTORE_100') update.hp = Math.min(fresh.hp + 100, fresh.max_hp);
+      if (itemKey === 'EXIT_BROKEN') { update.is_broken = false; update.broken_until = null; update.hp = Math.min(fresh.hp + 50, fresh.max_hp); }
+      update.job_data = JSON.stringify(freshJob);
+      db.update(players).set(update).where(eq(players.discord_id, interaction.user.id)).run();
+    })();
+  } catch { skipped = '❌ An error occurred while using the item. Try again.'; }
 
   if (skipped) return interaction.editReply(`❌ ${skipped}`);
 

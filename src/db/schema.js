@@ -25,6 +25,7 @@ const players = sqliteTable('players', {
   last_domain_at: integer('last_domain_at'),
   last_robbed_at: integer('last_robbed_at'),
   last_hunt_at: integer('last_hunt_at'),
+  last_scavenge_at: integer('last_scavenge_at'),
   last_daily_at: integer('last_daily_at'),
   daily_streak: integer('daily_streak').notNull().default(0),
   bank_balance: integer('bank_balance').notNull().default(0),

@@ -23,7 +23,7 @@ module.exports = {
     for (const [casterId, curse] of Object.entries(curses)) {
       if (curse.until > now) {
         const remaining = Math.ceil((curse.until - now) / 1000);
-        lines.push(`☠️ **${curse.by}** — ${remaining}s remaining (-20% damage)`);
+        lines.push(`☠️ **${curse.by || 'Unknown'}** — ${remaining}s remaining (-20% damage)`);
       }
     }
 

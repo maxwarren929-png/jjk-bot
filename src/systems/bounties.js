@@ -6,6 +6,7 @@ function placeBounty(placerId, targetId, amount) {
   const placer = db.select().from(players).where(eq(players.discord_id, placerId)).get();
   if (!placer) return { error: 'You need a profile first.' };
   if (placerId === targetId) return { error: 'You cannot place a bounty on yourself.' };
+  if (amount < 1) return { error: 'Bounty amount must be at least 1 💰.' };
   if (placer.yen < amount) return { error: `Not enough yen. Need **${amount} 💰**, have **${placer.yen} 💰**.` };
 
   const target = db.select().from(players).where(eq(players.discord_id, targetId)).get();

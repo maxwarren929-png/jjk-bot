@@ -22,6 +22,7 @@ try { sqlite.exec(`ALTER TABLE clans ADD COLUMN description TEXT NOT NULL DEFAUL
 try { sqlite.exec(`ALTER TABLE clans ADD COLUMN clan_balance INTEGER NOT NULL DEFAULT 0`); } catch {}
 try { sqlite.exec(`ALTER TABLE players ADD COLUMN fight_losses INTEGER NOT NULL DEFAULT 0`); } catch {}
 try { sqlite.exec(`ALTER TABLE players ADD COLUMN last_hunt_at INTEGER`); } catch {}
+try { sqlite.exec(`ALTER TABLE players ADD COLUMN last_scavenge_at INTEGER`); } catch {}
 
 // Create tables if they don't exist (Drizzle migrate-lite approach)
 sqlite.exec(`

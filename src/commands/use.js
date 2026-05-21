@@ -175,7 +175,7 @@ module.exports = {
           const ach2 = checkAndUnlock(discordId, 'first_bounty');
           if (ach2) await interaction.followUp({ content: `🏆 **Achievement Unlocked: ${ach2.icon} ${ach2.name}!**`, ephemeral: true }).catch(() => {});
         }
-        if ((actor.fight_wins || 0) >= 99 && (actor.fight_wins || 0) < 100) {
+        if ((result.rewards.winner === discordId) && ((actor.fight_wins || 0) + 1) >= 100) {
           const ach3 = checkAndUnlock(discordId, 'centurion');
           if (ach3) await interaction.followUp({ content: `🏆 **Achievement Unlocked: ${ach3.icon} ${ach3.name}!**`, ephemeral: true }).catch(() => {});
         }

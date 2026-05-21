@@ -19,6 +19,10 @@ const bosses = new Map(); // channelId -> BossState
 // }
 
 function spawnMahoraga(summonerId, targetId, channelId) {
+  const existing = bosses.get(channelId);
+  if (existing && !existing.dead && Date.now() <= existing.expiresAt) {
+    return null;
+  }
   const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
   const state = {
     hp: 2000,

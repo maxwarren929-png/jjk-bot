@@ -98,7 +98,8 @@ module.exports = {
       if (m) { const c = getClan(m.clan_id); return c?.name; }
       return null;
     })();
-    const footerParts = [`🏦 Bank: ${(player.bank_balance || 0).toLocaleString()} / ${player.bank_max === Infinity ? '♾️' : player.bank_max.toLocaleString()} 💰`];
+    const bankMax = player.bank_max ?? 5000;
+    const footerParts = [`🏦 Bank: ${(player.bank_balance || 0).toLocaleString()} / ${bankMax === Infinity ? '♾️' : bankMax.toLocaleString()} 💰`];
     if (clanName) footerParts.push(`⚔️ ${clanName}`);
 
     const embed = new EmbedBuilder()

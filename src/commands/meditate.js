@@ -34,12 +34,13 @@ module.exports = {
           return interaction.editReply('❌ You are already meditating. Wait for it to finish.');
         }
       } else {
-        delete job.__meditate_until;
         sqlite.transaction(() => {
           const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
           if (!fresh) return;
+          const fJob = (() => { try { return JSON.parse(fresh.job_data || '{}'); } catch { return {}; } })();
+          delete fJob.__meditate_until;
           const totalCe = Math.min(fresh.ce + MEDITATE_CE_PER_TICK * MEDITATE_TICKS, fresh.max_ce);
-          db.update(players).set({ ce: totalCe, job_data: JSON.stringify(job) }).where(eq(players.discord_id, interaction.user.id)).run();
+          db.update(players).set({ ce: totalCe, job_data: JSON.stringify(fJob) }).where(eq(players.discord_id, interaction.user.id)).run();
         })();
         await interaction.editReply('🧘 You recovered CE from a previous meditation that was interrupted!');
         return;

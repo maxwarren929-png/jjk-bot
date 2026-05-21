@@ -51,8 +51,10 @@ function getEnhancedBonuses(key, level) {
   const mult = 1 + ENHANCE_MULT * (level || 0);
   const bonuses = {};
   for (const [k, v] of Object.entries(base.bonuses)) {
-    if (typeof v === 'number') bonuses[k] = Math.round(v * mult);
-    else bonuses[k] = v;
+    if (typeof v === 'number') {
+      const scaled = v * mult;
+      bonuses[k] = Number.isInteger(v) ? Math.round(scaled) : Math.round(scaled * 100) / 100;
+    } else bonuses[k] = v;
   }
   return bonuses;
 }

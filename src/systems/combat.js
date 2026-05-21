@@ -9,6 +9,7 @@ const { executeDiscordActions } = require('./discord-actions');
 const { getDomainMultiplier } = require('./domain-state');
 const { getPlayerClanBonus } = require('./clans');
 const { getEquipmentBonuses } = require('./equipment');
+const vowCommand = require('../commands/vow');
 
 // In-memory cooldown tracking: userId -> { techniqueId -> timestamp }
 const cooldowns = new Map();
@@ -106,7 +107,7 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
         const reFetch = db.select().from(players).where(eq(players.discord_id, actor.discord_id)).get();
         if (!reFetch) return;
         const reJob = (() => { try { return JSON.parse(reFetch.job_data || '{}'); } catch { return {}; } })();
-        delete reJob.__statuses;
+        if (reJob.__statuses) delete reJob.__statuses.silenced_until;
         db.update(players).set({ job_data: JSON.stringify(reJob) }).where(eq(players.discord_id, actor.discord_id)).run();
       })();
       return { ok: true, damage: 0, log: `🔇 **${actor.username}** is silenced — the attack fizzled!`, targetHp: targetState.hp, rewards: null, actor: actorState, target: targetState };
@@ -153,6 +154,13 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
       const boostDmg = Math.floor(damage * 0.05);
       damage += boostDmg;
       logLine += ` ⚔️ *Clan damage boost +${boostDmg}!* `;
+    }
+
+    // Binding Vow damage buff (+25%)
+    if (vowCommand.consumeVow(actor.discord_id)) {
+      const vowDmg = Math.floor(damage * 0.25);
+      damage += vowDmg;
+      logLine += ` ⚔️ *Binding Vow +${vowDmg}!* `;
     }
 
     // Technique mastery bonus
