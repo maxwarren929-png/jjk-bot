@@ -78,7 +78,13 @@ module.exports = {
       bossRedirect = true;
     }
 
-    // Consumable item effects from job_data.__items
+    const result = applyTechnique(actor, finalTarget, techniqueId, interaction, bossRedirect);
+    if (result.error) {
+      await interaction.editReply(`❌ ${result.error}`);
+      return;
+    }
+
+    // Consumable item effects from job_data.__items (consume only after technique succeeds)
     const actorJob = (() => { try { return JSON.parse(actor.job_data || '{}'); } catch { return {}; } })();
     const items = actorJob.__items || [];
     let itemBonusDmg = 0;
@@ -96,12 +102,6 @@ module.exports = {
       actorJob.__items = items;
       db.update(players).set({ job_data: JSON.stringify(actorJob) }).where(eq(players.discord_id, discordId)).run();
       silencedTarget = true;
-    }
-
-    const result = applyTechnique(actor, finalTarget, techniqueId, interaction, bossRedirect);
-    if (result.error) {
-      await interaction.editReply(`❌ ${result.error}`);
-      return;
     }
     if (itemBonusDmg > 0 && result.damage > 0) {
       result.damage += itemBonusDmg;
@@ -148,6 +148,7 @@ module.exports = {
     if (result.rewards) {
       const r = result.rewards;
       let rewardText = `🏆 **${targetUser.username}** is BROKEN. Bank + wallet wiped (${r.yenLoss}💰 stolen). +10 CE`;
+      if (r.yenBonus) rewardText += `\n💰 **Clan yen bonus: +${r.yenBonus} 💰**`;
       if (r.bountyTotal) rewardText += `\n💰 **Bounty claimed: +${r.bountyTotal} 💰**`;
       if (r.gradeUp) rewardText += `\n⬆️ **Grade Up!** Advanced to **${r.gradeUp}**`;
       embed.addFields({ name: '💀 Target Defeated', value: rewardText, inline: false });

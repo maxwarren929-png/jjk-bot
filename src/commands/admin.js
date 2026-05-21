@@ -40,6 +40,7 @@ module.exports = {
           : 'All cursed techniques are now **enabled** on this server.');
 
       await interaction.editReply({ embeds: [embed] });
+      return;
     }
 
     if (sub === 'reset') {

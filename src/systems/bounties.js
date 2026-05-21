@@ -11,16 +11,23 @@ function placeBounty(placerId, targetId, amount) {
   const target = db.select().from(players).where(eq(players.discord_id, targetId)).get();
   if (!target) return { error: 'Target has no profile.' };
 
-  db.update(players).set({ yen: placer.yen - amount }).where(eq(players.discord_id, placerId)).run();
-
-  db.insert(bounties).values({
-    target_id: targetId,
-    placed_by_id: placerId,
-    amount,
-    created_at: Date.now(),
-  }).run();
-
-  return { ok: true, amount, targetName: target.username };
+  const txn = sqlite.transaction(() => {
+    const fresh = db.select().from(players).where(eq(players.discord_id, placerId)).get();
+    if (fresh.yen < amount) throw new Error('Insufficient yen');
+    db.update(players).set({ yen: fresh.yen - amount }).where(eq(players.discord_id, placerId)).run();
+    db.insert(bounties).values({
+      target_id: targetId,
+      placed_by_id: placerId,
+      amount,
+      created_at: Date.now(),
+    }).run();
+  });
+  try {
+    txn();
+    return { ok: true, amount, targetName: target.username };
+  } catch {
+    return { error: 'Transaction failed. Try again.' };
+  }
 }
 
 function listBounties() {

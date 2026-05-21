@@ -7,6 +7,7 @@ const { buildEffectContext, resolveEffects, resolveLegacyStatus } = require('./e
 const { executeDiscordActions } = require('./discord-actions');
 const { getDomainMultiplier } = require('./domain-state');
 const { claimBounties } = require('./bounties');
+const { getPlayerClanBonus } = require('./clans');
 
 // In-memory cooldown tracking: userId -> { techniqueId -> timestamp }
 const cooldowns = new Map();
@@ -123,6 +124,14 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
       logLine += `🔮 *Domain amplification +${bonusDamage} damage!* `;
     }
 
+    // Clan passive: DAMAGE_BOOST +5%
+    const clanBonus = getPlayerClanBonus(actor.discord_id);
+    if (clanBonus === 'DAMAGE_BOOST') {
+      const boostDmg = Math.floor(damage * 0.05);
+      damage += boostDmg;
+      logLine += ` ⚔️ *Clan damage boost +${boostDmg}!* `;
+    }
+
     // Black Flash
     if (rollBlackFlash()) {
       damage = Math.floor(damage * 1.5);
@@ -179,7 +188,12 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
   // Handle target death
   let rewards = null;
   if (!skipTargetDamage && targetState.hp <= 0) {
-    const stolenYen = target.yen + (target.bank_balance || 0);
+    let stolenYen = target.yen + (target.bank_balance || 0);
+    const targetClanBonus = getPlayerClanBonus(target.discord_id);
+    if (targetClanBonus === 'DEATH_REDUCTION') {
+      const saved = Math.floor(stolenYen * 0.1);
+      stolenYen -= saved;
+    }
 
     targetUpdate.is_broken = true;
     targetUpdate.hp = 0;
@@ -193,11 +207,13 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
 
     const newWins = actor.fight_wins + 1;
     actorUpdate.fight_wins = newWins;
-    actorUpdate.yen = actor.yen + stolenYen;
+    const actorClanBonus = getPlayerClanBonus(actor.discord_id);
+    const yenBonus = actorClanBonus === 'YEN_BOOST' ? Math.floor(stolenYen * 0.1) : 0;
+    actorUpdate.yen = actor.yen + stolenYen + yenBonus;
     actorUpdate.ce = Math.min(actor.ce + 10, actor.max_ce);
     actorUpdate.hp = actor.hp;
 
-    rewards = { winner: actor.discord_id, loser: target.discord_id, yenLoss: stolenYen };
+    rewards = { winner: actor.discord_id, loser: target.discord_id, yenLoss: stolenYen, yenBonus };
 
     // Bounty rewards
     const bountyResult = claimBounties(actor.discord_id, target.discord_id);

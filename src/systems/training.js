@@ -1,6 +1,7 @@
 const { db } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq, lte } = require('drizzle-orm');
+const { getPlayerClanBonus } = require('./clans');
 
 const TRAINING_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours
 
@@ -66,7 +67,9 @@ function regenAllPlayers() {
   const allPlayers = db.select().from(players).all();
   for (const p of allPlayers) {
     if (p.ce >= p.max_ce) continue;
-    const regen = p.is_broken ? 2 : 5;
+    let regen = p.is_broken ? 2 : 5;
+    const bonus = getPlayerClanBonus(p.discord_id);
+    if (bonus === 'CE_REGEN') regen = Math.floor(regen * 1.1);
     const newCe = Math.min(p.ce + regen, p.max_ce);
     db.update(players).set({ ce: newCe }).where(eq(players.discord_id, p.discord_id)).run();
   }

@@ -3,6 +3,8 @@ const { db } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 
+const { SHOP_CATALOG } = require('../systems/economy');
+
 const ITEM_NAMES = {
   SILENCE_NEXT: { name: '🔇 Binding Ring', desc: 'Silences the enemy at the start of your next fight.' },
   BONUS_DAMAGE_20: { name: '🗡️ Split Soul Katana', desc: '+20 flat damage in your next fight.' },
@@ -10,10 +12,22 @@ const ITEM_NAMES = {
   EXIT_BROKEN: { name: '🧪 Healing Vial', desc: 'Exit Broken state and restore 50 HP.' },
 };
 
+function getSellPrice(effectKey) {
+  const item = SHOP_CATALOG.find(i => i.effect === effectKey);
+  return item ? Math.floor(item.cost * 0.5) : 0;
+}
+
 const USEABLE_ITEMS = {
   CE_RESTORE_50: { name: '💜 CE Potion', desc: 'Restore 50 CE' },
   EXIT_BROKEN: { name: '🧪 Healing Vial', desc: 'Exit Broken state and restore 50 HP' },
 };
+
+const SELLABLE_ITEMS = [
+  { name: '🔇 Binding Ring', value: 'SILENCE_NEXT' },
+  { name: '🗡️ Split Soul Katana', value: 'BONUS_DAMAGE_20' },
+  { name: '💜 CE Potion', value: 'CE_RESTORE_50' },
+  { name: '🧪 Healing Vial', value: 'EXIT_BROKEN' },
+];
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -27,11 +41,17 @@ module.exports = {
         .addChoices(
           { name: '💜 CE Potion (restore 50 CE)', value: 'CE_RESTORE_50' },
           { name: '🧪 Healing Vial (exit Broken + 50 HP)', value: 'EXIT_BROKEN' },
-        ))),
+        )))
+    .addSubcommand(sub => sub
+      .setName('sell')
+      .setDescription('Sell a combat item for 50% of its value.')
+      .addStringOption(opt => opt.setName('item').setDescription('Item to sell').setRequired(true)
+        .addChoices(...SELLABLE_ITEMS.map(i => ({ name: i.name, value: i.value }))))),
 
   async execute(interaction) {
     const sub = interaction.options.getSubcommand();
     if (sub === 'use') return useItem(interaction);
+    if (sub === 'sell') return sellItem(interaction);
 
     await interaction.deferReply();
     const player = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
@@ -49,9 +69,9 @@ module.exports = {
     // Items stored in job_data.__items
     const jobData = JSON.parse(player.job_data || '{}');
     const flags = jobData.__items || [];
-    const items = flags.map(f => ITEM_NAMES[f]).filter(Boolean);
+    const items = flags.map(f => ({ key: f, ...ITEM_NAMES[f] })).filter(Boolean);
     if (items.length > 0) {
-      embed.addFields({ name: '⚔️ Combat Items', value: items.map(i => `**${i.name}** — ${i.desc}`).join('\n'), inline: false });
+      embed.addFields({ name: '⚔️ Combat Items', value: items.map(i => `**${i.name}** — ${i.desc}\n└ Sell: **${getSellPrice(i.key)} 💰**`).join('\n'), inline: false });
     } else {
       embed.addFields({ name: '⚔️ Combat Items', value: 'None — buy from `/shop`', inline: false });
     }
@@ -87,9 +107,24 @@ module.exports = {
 
     if (statusLines.length) embed.addFields({ name: '🔴 Active Statuses', value: statusLines.join('\n'), inline: false });
 
-    await interaction.editReply({ embeds: [embed] });
+  await interaction.editReply({ embeds: [embed] });
   },
 };
+
+async function sellItem(interaction) {
+  await interaction.deferReply();
+  const itemKey = interaction.options.getString('item');
+  const player = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+  if (!player) return interaction.editReply('❌ Run `/profile` first.');
+  const { sellItem: doSell } = require('../systems/economy');
+  const result = doSell(player, itemKey);
+  if (result.error) return interaction.editReply(`❌ ${result.error}`);
+  const embed = new EmbedBuilder()
+    .setTitle('💰 Item Sold')
+    .setColor(0x2ECC71)
+    .setDescription(`Sold **${result.item}** for **${result.price} 💰** (50% of cost).`);
+  await interaction.editReply({ embeds: [embed] });
+}
 
 async function useItem(interaction) {
   await interaction.deferReply();

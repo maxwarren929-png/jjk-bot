@@ -13,8 +13,10 @@ module.exports = {
       techCount = db.select().from(techniques).all().length;
       clanCount = db.select().from(clans).all().length;
     } catch { /* db not ready */ }
+    const now = new Date();
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`  ✅ Logged in as ${client.user.tag}`);
+    console.log(`  🕐 Launched at  ${now.toLocaleString()}`);
     console.log(`  🌐 Servers:     ${guildCount}`);
     console.log(`  📜 Commands:    ${cmdCount}`);
     console.log(`  👤 Players:     ${playerCount}`);

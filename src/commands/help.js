@@ -55,7 +55,7 @@ module.exports = {
         },
         {
           name: '📦 Inventory',
-          value: '`/inventory` — View your items and consumables',
+          value: '`/inventory view/use/sell` — Manage your items',
           inline: false,
         },
       );

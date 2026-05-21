@@ -9,6 +9,13 @@ function getClan(clanId) {
   return db.select().from(clans).where(eq(clans.id, clanId)).get();
 }
 
+function getPlayerClanBonus(playerId) {
+  const member = getMembership(playerId);
+  if (!member) return null;
+  const clan = getClan(member.clan_id);
+  return clan ? clan.passive_bonus : null;
+}
+
 function getClanByName(name) {
   return db.select().from(clans).where(eq(clans.name, name)).get();
 }
@@ -131,4 +138,4 @@ function transferLeadership(leader, targetId) {
   return { ok: true, clan };
 }
 
-module.exports = { getClan, getClanByName, getMembership, getMembers, createClan, inviteToClan, joinClan, leaveClan, transferLeadership };
+module.exports = { getClan, getClanByName, getMembership, getMembers, createClan, inviteToClan, joinClan, leaveClan, transferLeadership, getPlayerClanBonus };

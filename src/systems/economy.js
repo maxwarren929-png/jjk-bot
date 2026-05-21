@@ -85,4 +85,26 @@ function transferYen(fromId, toId, amount) {
   return { ok: true };
 }
 
-module.exports = { SHOP_CATALOG, applyShopEffect, transferYen, getPlayer };
+const CONSUMABLE_EFFECTS = ['CE_RESTORE_50', 'SILENCE_NEXT', 'BONUS_DAMAGE_20', 'EXIT_BROKEN'];
+
+function sellItem(player, effectKey) {
+  const item = SHOP_CATALOG.find(i => i.effect === effectKey);
+  if (!item) return { error: 'Item cannot be sold.' };
+
+  const data = JSON.parse(player.job_data || '{}');
+  const items = data.__items || [];
+  const idx = items.indexOf(effectKey);
+  if (idx === -1) return { error: `You don't have a **${item.name}** to sell.` };
+
+  const sellPrice = Math.floor(item.cost * 0.5);
+  items.splice(idx, 1);
+  data.__items = items;
+  db.update(players).set({
+    yen: player.yen + sellPrice,
+    job_data: JSON.stringify(data),
+  }).where(eq(players.discord_id, player.discord_id)).run();
+
+  return { ok: true, item: item.name, price: sellPrice };
+}
+
+module.exports = { SHOP_CATALOG, applyShopEffect, transferYen, getPlayer, sellItem, CONSUMABLE_EFFECTS };
