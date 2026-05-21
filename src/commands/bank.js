@@ -130,6 +130,13 @@ module.exports = {
           .setColor(0x2ECC71)
           .setDescription(`**${next.name}** — ${next.max === Infinity ? '♾️ Unlimited' : `${next.max.toLocaleString()} 💰 max`}`);
         await interaction.editReply({ embeds: [done], components: [] });
+        try {
+          const { checkAndUnlock } = require('../systems/achievements');
+          if (next.max === Infinity) {
+            const ach = checkAndUnlock(interaction.user.id, 'max_bank');
+            if (ach) await interaction.followUp({ content: `🏆 **Achievement Unlocked: ${ach.icon} ${ach.name}!**`, ephemeral: true }).catch(() => {});
+          }
+        } catch { /* ok */ }
       });
       col.on('end', (_, reason) => {
         if (reason === 'time') interaction.editReply({ components: [] }).catch(() => {});
@@ -150,43 +157,23 @@ module.exports = {
       if (!amount || amount <= 0) return interaction.editReply('❌ Specify an amount or use `all: true`.');
       if (amount > walletYen) return interaction.editReply(`❌ You only have **${walletYen.toLocaleString()} 💰** in your wallet.`);
       const canStore = fresh.bank_max - bankBal;
-      const actual = Math.min(amount, canStore);
       if (canStore <= 0) return interaction.editReply(`❌ Your bank is full (${fresh.bank_max === Infinity ? '♾️' : fresh.bank_max.toLocaleString()} max). Upgrade first.`);
-      if (actual < amount) {
-        sqlite.transaction(() => {
-          const f = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
-          if (!f) return;
-          const maxStore = f.bank_max - (f.bank_balance || 0);
-          const a = Math.min(amount, f.yen, maxStore);
-          db.update(players).set({ yen: f.yen - a, bank_balance: (f.bank_balance || 0) + a })
-            .where(eq(players.discord_id, interaction.user.id)).run();
-        })();
-        const afterDeposit = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
-        const diff = amount - actual;
-        const embed = new EmbedBuilder()
-          .setTitle('🏦 Deposit (Partial)')
-          .setColor(0xF1C40F)
-          .setDescription(`Deposited **${actual} 💰** (bank full). ${diff} 💰 left in wallet.`)
-          .addFields(
-            { name: '👛 Wallet', value: `${afterDeposit.yen} 💰`, inline: true },
-            { name: '🏦 Bank', value: `${afterDeposit.bank_balance || 0} 💰`, inline: true },
-          );
-        return interaction.editReply({ embeds: [embed] });
-      }
+      let depositedAmount = 0;
       sqlite.transaction(() => {
         const f = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
         if (!f) return;
-        const a = Math.min(actual, f.yen);
         const maxStore = f.bank_max - (f.bank_balance || 0);
-        const d = Math.min(a, maxStore);
-        db.update(players).set({ yen: f.yen - d, bank_balance: (f.bank_balance || 0) + d })
+        const a = Math.min(amount, f.yen, maxStore);
+        depositedAmount = a;
+        db.update(players).set({ yen: f.yen - a, bank_balance: (f.bank_balance || 0) + a })
           .where(eq(players.discord_id, interaction.user.id)).run();
       })();
       const afterDeposit = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+      const isPartial = depositedAmount < amount;
       const embed = new EmbedBuilder()
-        .setTitle('🏦 Deposit')
-        .setColor(0x2ECC71)
-        .setDescription(`Deposited **${actual} 💰**`)
+        .setTitle(isPartial ? '🏦 Deposit (Partial)' : '🏦 Deposit')
+        .setColor(isPartial ? 0xF1C40F : 0x2ECC71)
+        .setDescription(`Deposited **${depositedAmount} 💰**${isPartial ? ` (bank full). ${amount - depositedAmount} 💰 left in wallet.` : ''}`)
         .addFields(
           { name: '👛 Wallet', value: `${afterDeposit.yen} 💰`, inline: true },
           { name: '🏦 Bank', value: `${afterDeposit.bank_balance || 0} 💰`, inline: true },

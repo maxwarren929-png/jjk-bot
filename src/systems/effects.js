@@ -5,10 +5,6 @@ function defineEffect(id, handler) {
   registry.set(id, handler);
 }
 
-function getEffect(id) {
-  return registry.get(id);
-}
-
 // ── Phase System ────────────────────────────────────────────────────────────
 // Phases: onUse, onHit, onTurnStart, onTurnEnd, onAftermath, onFightEnd
 
@@ -314,85 +310,16 @@ function applyLegacyStatus(ctx, status, results) {
       results.logEntries.push(`⏱️ *Cooldowns reset*`);
       break;
     case 'DOUBLE_HIT':
-      results.bonusDamage = 0.7;
-      results.logEntries.push(`⚡ *Double strike*`);
+      // Handled in combat.js directly
       break;
   }
-}
-
-// ── Phase Hook Resolution ───────────────────────────────────────────────────
-
-function resolvePhase(state, phase, discordCtx = null) {
-  const results = { logs: [], bonusDamage: 0 };
-
-  const players = [state.attacker, state.defender];
-  for (const p of players) {
-    // Tick DoTs on turn end
-    if (phase === 'onTurnEnd') {
-      for (const s of p.statuses) {
-        if (s === 'BURN') {
-          p.hp = Math.max(0, p.hp - 8);
-          results.logs.push(`🔥 ${p.username} *Burn ticks: -8 HP*`);
-        }
-        if (s === 'BLEED') {
-          p.hp = Math.max(0, p.hp - 5);
-          results.logs.push(`🩸 ${p.username} *Bleed ticks: -5 HP*`);
-        }
-      }
-      if (p.statuses.includes('EXPLODE')) {
-        p.hp = Math.max(0, p.hp - 20);
-        p.statuses = p.statuses.filter(s => s !== 'EXPLODE');
-        results.logs.push(`💥 ${p.username} *Explode triggers: -20 HP*`);
-      }
-    }
-  }
-
-  return results;
-}
-
-// ── Category-Based Effect Shortcuts ──────────────────────────────────────────
-
-const CATEGORY_EFFECTS = {
-  emoji: {
-    onHit: [{ use: 'conditional_bonus', with: { condition: 'has_reactions', bonus: 10 } }],
-  },
-  voice: {
-    onUse: [{ use: 'apply_status', with: { status: 'CONFUSE' } }],
-  },
-  thread: {
-    onUse: [{ use: 'skip_turn' }],
-  },
-  role: {
-    onHit: [{ use: 'conditional_bonus', with: { condition: 'higher_role', bonus: 15 } }],
-  },
-  shield: {
-    onUse: [{ use: 'shield', with: { amount: 40 } }],
-  },
-  heal: {
-    onUse: [{ use: 'heal', with: { amount: 30 } }],
-  },
-  drain: {
-    onUse: [{ use: 'ce_drain', with: { amount: 25 } }],
-  },
-  multi: {
-    onHit: [{ use: 'multi_hit', with: { hits: 3, perHit: { min: 6, max: 10 } } }],
-  },
-};
-
-function getCategoryEffects(category, phase) {
-  return CATEGORY_EFFECTS[category]?.[phase] || [];
 }
 
 // ── Exports ──────────────────────────────────────────────────────────────────
 
 module.exports = {
   defineEffect,
-  getEffect,
-  registry,
   buildEffectContext,
   resolveEffects,
-  resolvePhase,
   resolveLegacyStatus,
-  getCategoryEffects,
-  CATEGORY_EFFECTS,
 };

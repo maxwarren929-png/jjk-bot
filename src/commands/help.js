@@ -27,24 +27,28 @@ module.exports = {
                + '`/train cancel` — Cancel current training (no refund)\n'
                + '`/reset` — Permanently delete your profile and start over\n'
                + '`/leaderboard` — Top players by wealth, wins, grade, or bounty kills\n'
-               + '`/rankup` — Check grade progression requirements',
+               + '`/rankup` — Check grade progression requirements\n'
+               + '`/achievements` — View your earned achievements and progress',
           inline: false,
         },
         {
           name: '⚔️ Combat',
           value: '`/use <technique> <target>` — Use a technique on someone\n'
+               + '`/spar <opponent>` — Practice combat against AI (no rewards/penalties)\n'
                + '`/domain` — Domain Expansion (Grade 2+, costs 150 CE)\n'
                + '`/rob <target>` — Try to steal wallet yen (1h cooldown)\n'
                + '`/hunt` — Hunt cursed spirits for CE, yen, and items (30m cooldown)',
           inline: false,
         },
         {
-           name: '🏦 Economy',
+           name: '🏦 Economy & Info',
           value: '`/daily claim` — Claim daily reward (streak bonus)\n'
                + '`/daily info` — Check daily streak and next claim\n'
                + '`/shop` — Browse and buy items\n'
                + '`/buy <item> [quantity]` — Quick-buy with bulk support\n'
                + '`/stats` — Server-wide statistics\n'
+               + '`/info` — Bot and server information\n'
+               + '`/today` — Daily activity summary\n'
                + '`/voterewards` — Claim daily voting reward (CE + yen)\n'
                + '`/enhance <slot>` — Upgrade equipped gear with CE\n'
                + '`/bank balance/deposit/withdraw/upgrade` — Manage your cursed bank account\n'

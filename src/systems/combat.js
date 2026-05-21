@@ -69,6 +69,7 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
   // Build in-memory combat snapshots (don't persist, just for effect resolution)
   const actorBonuses = getEquipmentBonuses(actor.discord_id);
   const targetBonuses = getEquipmentBonuses(target.discord_id);
+  const targetCDs = getCooldowns(target.discord_id);
   const actorState = {
     id: actor.discord_id,
     username: actor.username,
@@ -78,7 +79,7 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
     maxCe: actor.max_ce + (actorBonuses.bonusMaxCe || 0),
     shield: 0,
     statuses: [],
-    cooldowns: {},
+    cooldowns: userCDs,
   };
   const targetState = {
     id: target.discord_id,
@@ -89,7 +90,7 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
     maxCe: target.max_ce + (targetBonuses.bonusMaxCe || 0),
     shield: 0,
     statuses: [],
-    cooldowns: {},
+    cooldowns: targetCDs,
   };
 
   // Deduct CE and apply cooldown (in memory — persisted after DB write succeeds)
@@ -162,8 +163,7 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
       logLine += ` 🌟 *Mastery +${masteryDmg}!* `;
     }
 
-    // Equipment weapon bonus
-    const actorBonuses = getEquipmentBonuses(actor.discord_id);
+    // Equipment weapon bonus (actorBonuses from outer scope)
     if (actorBonuses.bonusDamage > 0) {
       damage += actorBonuses.bonusDamage;
       logLine += ` ⚔️ *Weapon +${actorBonuses.bonusDamage}!* `;
@@ -181,8 +181,7 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
       logLine += `✨ **BLACK FLASH!** `;
     }
 
-    // Equipment armor reduction
-    const targetBonuses = getEquipmentBonuses(target.discord_id);
+    // Equipment armor reduction (targetBonuses from outer scope)
     if (targetBonuses.damageReduction > 0) {
       const reduced = Math.floor(damage * targetBonuses.damageReduction);
       damage -= reduced;
@@ -373,21 +372,25 @@ function applyTechnique(actor, target, techniqueId, interaction = null, skipTarg
 
   // Send death notification DM
   if (rewards && interaction) {
-    interaction.client.users.fetch(target.discord_id).then(targetUser => {
-      if (!targetUser) return;
-      const deathEmbed = new EmbedBuilder()
-        .setTitle('💀 You have been defeated!')
-        .setColor(0x000000)
-        .setDescription(`**${actor.username}** destroyed you in combat!`)
-        .addFields(
-          { name: '💰 Losses', value: `All yen lost (${rewards.yenLoss} 💰)`, inline: false },
-          { name: '🩸 Status', value: 'You are **Broken** for 24 hours.', inline: false },
-        );
-      if (rewards.bountyTotal) {
-        deathEmbed.addFields({ name: '💰 Bounty Collected', value: `Your bounty of **${rewards.bountyTotal} 💰** was claimed.`, inline: false });
-      }
-      targetUser.send({ embeds: [deathEmbed] }).catch(() => {});
-    }).catch(() => {});
+    const targetJob = (() => { try { return JSON.parse(target.job_data || '{}'); } catch { return {}; } })();
+    const tPrefs = targetJob.__notifications || {};
+    if (tPrefs.death !== false) {
+      interaction.client.users.fetch(target.discord_id).then(targetUser => {
+        if (!targetUser) return;
+        const deathEmbed = new EmbedBuilder()
+          .setTitle('💀 You have been defeated!')
+          .setColor(0x000000)
+          .setDescription(`**${actor.username}** destroyed you in combat!`)
+          .addFields(
+            { name: '💰 Losses', value: `All yen lost (${rewards.yenLoss} 💰)`, inline: false },
+            { name: '🩸 Status', value: 'You are **Broken** for 24 hours.', inline: false },
+          );
+        if (rewards.bountyTotal) {
+          deathEmbed.addFields({ name: '💰 Bounty Collected', value: `Your bounty of **${rewards.bountyTotal} 💰** was claimed.`, inline: false });
+        }
+        targetUser.send({ embeds: [deathEmbed] }).catch(() => {});
+      }).catch(() => {});
+    }
   }
 
   if (interaction && tech) {

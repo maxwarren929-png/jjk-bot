@@ -114,6 +114,19 @@ sqlite.exec(`
     effect TEXT NOT NULL,
     description TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS achievements (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'general',
+    icon TEXT NOT NULL DEFAULT '🏆'
+  );
+  CREATE TABLE IF NOT EXISTS player_achievements (
+    player_id TEXT NOT NULL,
+    achievement_id TEXT NOT NULL,
+    unlocked_at INTEGER NOT NULL,
+    PRIMARY KEY (player_id, achievement_id)
+  );
 `);
 
 // Migration: bump old 300 max_hp players to 1000 (proportional HP)

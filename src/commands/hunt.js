@@ -46,23 +46,31 @@ module.exports = {
     if (!check.ok) return interaction.editReply(`❌ You must wait **${check.remaining} min** before hunting again.`);
 
     const spirit = SPIRITS[Math.floor(Math.random() * SPIRITS.length)];
-    if (player.ce < spirit.ceCost) return interaction.editReply(`❌ Need **${spirit.ceCost}** 💜 CE to hunt. You have **${player.ce}** 💜.`);
-
     const result = HUNT_RESULTS[Math.floor(Math.random() * HUNT_RESULTS.length)];
-    const baseReward = Math.floor(Math.random() * (spirit.rewardMax - spirit.rewardMin + 1)) + spirit.rewardMin;
-    const reward = Math.floor(baseReward * result.mult);
 
-    const damageTaken = Math.floor(spirit.hp * (1 - result.mult / 2));
-    const playerHp = Math.max(1, (player.hp || 100) - damageTaken);
-
+    let reward = 0, playerHp = 0, damageTaken = 0;
     sqlite.transaction(() => {
+      const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+      if (!fresh) return;
+      if (fresh.ce < spirit.ceCost) { reward = -1; return; }
+      const baseReward = Math.floor(Math.random() * (spirit.rewardMax - spirit.rewardMin + 1)) + spirit.rewardMin;
+      reward = Math.floor(baseReward * result.mult);
+      damageTaken = Math.floor(spirit.hp * (1 - result.mult / 2));
+      playerHp = Math.max(1, (fresh.hp || 100) - damageTaken);
       db.update(players).set({
-        ce: Math.max(0, player.ce - spirit.ceCost + Math.floor(reward * 0.3)),
-        yen: (player.yen || 0) + Math.floor(reward * 0.7),
+        ce: Math.max(0, fresh.ce - spirit.ceCost + Math.floor(reward * 0.3)),
+        yen: (fresh.yen || 0) + Math.floor(reward * 0.7),
         hp: playerHp,
         last_hunt_at: Date.now(),
       }).where(eq(players.discord_id, interaction.user.id)).run();
     })();
+    if (reward === -1) return interaction.editReply(`❌ Need **${spirit.ceCost}** 💜 CE to hunt.`);
+
+    try {
+      const { checkAndUnlock } = require('../systems/achievements');
+      const ach = checkAndUnlock(interaction.user.id, 'first_hunt');
+      if (ach) await interaction.followUp({ content: `🏆 **Achievement Unlocked: ${ach.icon} ${ach.name}!**`, ephemeral: true });
+    } catch { /* ok */ }
 
     const embed = new EmbedBuilder()
       .setTitle(`👹 ${spirit.name}`)

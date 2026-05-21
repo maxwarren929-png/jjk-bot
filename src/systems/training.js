@@ -62,6 +62,9 @@ function checkAndNotifyCompletedTraining(client) {
     if (p.training_until && p.training_until <= Date.now()) {
       const result = completeTraining(p);
       if (result && client) {
+        const job = (() => { try { return JSON.parse(p.job_data || '{}'); } catch { return {}; } })();
+        const prefs = job.__notifications || {};
+        if (prefs.training === false) continue;
         client.users.fetch(p.discord_id).then(user => {
           if (user) {
             const rewardText = result.type === 'Meditation' ? '+15 Max CE' :

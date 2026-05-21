@@ -46,7 +46,12 @@ module.exports = {
           { name: 'Placed By', value: interaction.user.username, inline: true },
           { name: 'Amount', value: `${result.amount} 💰`, inline: true },
         );
-      targetUser.send(`☠️ A bounty of **${result.amount} 💰** has been placed on you by **${interaction.user.username}**!`).catch(() => {});
+      const bTarget = db.select().from(players).where(eq(players.discord_id, targetUser.id)).get();
+      const bJob = (() => { try { return JSON.parse(bTarget?.job_data || '{}'); } catch { return {}; } })();
+      const bPrefs = bJob.__notifications || {};
+      if (bPrefs.bounty !== false) {
+        targetUser.send(`☠️ A bounty of **${result.amount} 💰** has been placed on you by **${interaction.user.username}**!`).catch(() => {});
+      }
       return interaction.editReply({ embeds: [embed] });
     }
 

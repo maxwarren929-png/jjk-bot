@@ -68,14 +68,23 @@ module.exports = {
       if (newActorYen === undefined) return interaction.editReply('❌ Robbery failed — target or actor not found.');
       embed.setDescription(`Stole **${finalStealAmount} 💰** from **${targetUser.username}**'s wallet.`);
       // Notify target via DM
-      targetUser.send(`💀 **${interaction.user.username}** robbed **${finalStealAmount} 💰** from your wallet!`).catch(() => {});
+      const rJob = (() => { try { return JSON.parse(target.job_data || '{}'); } catch { return {}; } })();
+      const rPrefs = rJob.__notifications || {};
+      if (rPrefs.robbery !== false) {
+        targetUser.send(`💀 **${interaction.user.username}** robbed **${finalStealAmount} 💰** from your wallet!`).catch(() => {});
+      }
+      try {
+        const { checkAndUnlock } = require('../systems/achievements');
+        const ach = checkAndUnlock(interaction.user.id, 'first_rob');
+        if (ach) await interaction.followUp({ content: `🏆 **Achievement Unlocked: ${ach.icon} ${ach.name}!**`, ephemeral: true }).catch(() => {});
+      } catch { /* ok */ }
     } else {
       let failStealAmount = 0, actualFine = 0;
       try {
         sqlite.transaction(() => {
           const fActor = db.select().from(players).where(eq(players.discord_id, userId)).get();
           const fTarget = db.select().from(players).where(eq(players.discord_id, targetUser.id)).get();
-          if (!fActor || !fTarget) return;
+          if (!fActor || !fTarget) { newActorYen = actor.yen; newTargetYen = target.yen; return; }
           failStealAmount = Math.min(Math.floor(fTarget.yen * STEAL_PCT), MAX_STEAL);
           const fine = Math.max(10, Math.floor(failStealAmount * FAIL_FINE_PCT));
           actualFine = Math.min(fine, fActor.yen);
