@@ -85,7 +85,12 @@ module.exports = {
 
     if (items.length > 0) {
       const itemList = items.map(k => `• ${ITEM_NAMES[k]?.name || k}`).join('\n');
-      embed.addFields({ name: '⚔️ Combat Items', value: itemList, inline: false });
+      const totalSell = items.reduce((sum, k) => sum + getSellPrice(k), 0);
+      if (totalSell > 0) {
+        embed.addFields({ name: '⚔️ Combat Items', value: `${itemList}\n\n💰 **Sell all for ${totalSell.toLocaleString()} 💰** (\`/inventory sell\`)`, inline: false });
+      } else {
+        embed.addFields({ name: '⚔️ Combat Items', value: itemList, inline: false });
+      }
     } else {
       embed.addFields({ name: '⚔️ Combat Items', value: 'None. Buy items from `/shop`.', inline: false });
     }

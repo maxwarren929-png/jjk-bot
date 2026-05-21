@@ -104,7 +104,14 @@ module.exports = {
       const brokenText = player.innate_removed
         ? 'You are broken. Your innate technique was destroyed. You cannot fight or use your domain.'
         : 'You are broken. You cannot fight or use your domain.';
-      embed.addFields({ name: '💀 BROKEN', value: brokenText, inline: false });
+      let timeLeft = '';
+      if (player.broken_until && player.broken_until > Date.now()) {
+        const remainMs = player.broken_until - Date.now();
+        const hrs = Math.floor(remainMs / 3600000);
+        const mins = Math.ceil((remainMs % 3600000) / 60000);
+        timeLeft = `\n⏳ ${hrs}h ${mins}m remaining`;
+      }
+      embed.addFields({ name: '💀 BROKEN', value: brokenText + timeLeft, inline: false });
       embed.setColor(0x111111);
     }
 

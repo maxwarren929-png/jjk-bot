@@ -46,6 +46,7 @@ module.exports = {
       .addBooleanOption(o => o.setName('enabled').setDescription('Invite-only on or off').setRequired(true)))
     .addSubcommand(sub => sub.setName('setdescription').setDescription('Set your clan description (leader only, max 200 chars).')
       .addStringOption(o => o.setName('text').setDescription('New description').setRequired(true)))
+    .addSubcommand(sub => sub.setName('list').setDescription('Browse all clans.'))
     .addSubcommand(sub => sub.setName('top').setDescription('View the clan leaderboard ranked by total member wealth.')),
 
   async execute(interaction) {
@@ -216,6 +217,27 @@ module.exports = {
       col.on('end', (_, reason) => {
         if (reason === 'time') interaction.editReply({ components: [] }).catch(() => {});
       });
+    } else if (sub === 'list') {
+      const allClans = db.select().from(clansTable).all();
+      if (!allClans.length) {
+        await interaction.editReply('❌ No clans exist yet.');
+        return;
+      }
+
+      const rows = allClans.map(c => {
+        const members = db.select().from(clan_members).where(eq(clan_members.clan_id, c.id)).all();
+        const count = members.length;
+        const lock = c.invite_only ? '🔒' : '🔓';
+        const passive = PASSIVE_DESC[c.passive_bonus] || c.passive_bonus;
+        return `${lock} **${c.name}** — ${count} member${count !== 1 ? 's' : ''} — ${passive}`;
+      });
+
+      const embed = new EmbedBuilder()
+        .setTitle('⚔️ All Clans')
+        .setColor(0x3498DB)
+        .setDescription(rows.join('\n'));
+
+      await interaction.editReply({ embeds: [embed] });
     } else if (sub === 'top') {
       const allClans = db.select().from(clansTable).all();
       if (!allClans.length) {

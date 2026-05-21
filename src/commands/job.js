@@ -173,12 +173,15 @@ async function info(interaction, player) {
       embed.addFields({ name: '📦 Active Delivery', value: `${remain}m remaining — **${data.courier_pay} 💰**`, inline: false });
     } else if (data.courier_until && data.courier_until <= Date.now() && data.courier_pay) {
       const pay = data.courier_pay;
-      data.courier_until = null;
-      data.courier_pay = null;
-      saveJobData(interaction.user.id, data);
       sqlite.transaction(() => {
         const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
-        if (fresh) db.update(players).set({ yen: fresh.yen + pay }).where(eq(players.discord_id, interaction.user.id)).run();
+        if (!fresh) return;
+        const fData = jobData(fresh);
+        if (fData.courier_until && fData.courier_until <= Date.now() && fData.courier_pay) {
+          fData.courier_until = null;
+          fData.courier_pay = null;
+          db.update(players).set({ yen: fresh.yen + pay, job_data: JSON.stringify(fData) }).where(eq(players.discord_id, interaction.user.id)).run();
+        }
       })();
       embed.addFields({ name: '✅ Delivery Complete', value: `Earned **${pay} 💰**`, inline: false });
     } else {
@@ -231,12 +234,15 @@ async function courier(interaction, player) {
   // Payout any completed delivery
   if (data.courier_until && data.courier_until <= Date.now() && data.courier_pay) {
     const pay = data.courier_pay;
-    data.courier_until = null;
-    data.courier_pay = null;
-    saveJobData(interaction.user.id, data);
     sqlite.transaction(() => {
       const f = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
-      if (f) db.update(players).set({ yen: f.yen + pay }).where(eq(players.discord_id, interaction.user.id)).run();
+      if (!f) return;
+      const fData = jobData(f);
+      if (fData.courier_until && fData.courier_until <= Date.now() && fData.courier_pay) {
+        fData.courier_until = null;
+        fData.courier_pay = null;
+        db.update(players).set({ yen: f.yen + pay, job_data: JSON.stringify(fData) }).where(eq(players.discord_id, interaction.user.id)).run();
+      }
     })();
     await interaction.editReply(`✅ Previous delivery completed! Earned **${pay} 💰**. You can now take a new one.`);
     return;
@@ -397,14 +403,14 @@ async function chop(interaction, player) {
   const axeLvl = data.axeLevel || 1;
   const earned = Math.floor(Math.random() * (axeLvl * 2)) + axeLvl;
 
-  data.lumberjack_chops = chops + 1;
-  saveJobData(interaction.user.id, data);
   let newHp;
   sqlite.transaction(() => {
     const fPlayer = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
     if (!fPlayer) return;
+    const fData = jobData(fPlayer);
+    fData.lumberjack_chops = (todayReset(fPlayer) ? 0 : (fData.lumberjack_chops || 0)) + 1;
     newHp = Math.max(1, fPlayer.hp - 2);
-    db.update(players).set({ yen: fPlayer.yen + earned, hp: newHp }).where(eq(players.discord_id, interaction.user.id)).run();
+    db.update(players).set({ yen: fPlayer.yen + earned, hp: newHp, job_data: JSON.stringify(fData) }).where(eq(players.discord_id, interaction.user.id)).run();
   })();
 
   const embed = new EmbedBuilder()
@@ -548,16 +554,18 @@ async function smelt(interaction, player) {
   const ores = data.miner_ores || {};
   if (!ores[oreId] || ores[oreId] <= 0) return interaction.editReply(`❌ You don't have any **${ore.name}** to smelt.`);
 
-  ores[oreId] -= 1;
   const success = Math.random() < 0.5;
   const value = success ? ore.baseValue * 2 : 0;
 
-  data.miner_ores = ores;
-  saveJobData(interaction.user.id, data);
   sqlite.transaction(() => {
     const fPlayer = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
     if (!fPlayer) return;
-    db.update(players).set({ yen: fPlayer.yen + value }).where(eq(players.discord_id, interaction.user.id)).run();
+    const fData = jobData(fPlayer);
+    const fOres = fData.miner_ores || {};
+    if (!fOres[oreId] || fOres[oreId] <= 0) return;
+    fOres[oreId] -= 1;
+    fData.miner_ores = fOres;
+    db.update(players).set({ yen: fPlayer.yen + value, job_data: JSON.stringify(fData) }).where(eq(players.discord_id, interaction.user.id)).run();
   })();
 
   const embed = new EmbedBuilder()
@@ -583,12 +591,18 @@ async function sell(interaction, player) {
 
   if (total === 0) return interaction.editReply('❌ No ores to sell. Use `/job mine`.');
 
-  data.miner_ores = { iron: 0, gold: 0, gem: 0 };
-  saveJobData(interaction.user.id, data);
   sqlite.transaction(() => {
     const fPlayer = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
     if (!fPlayer) return;
-    db.update(players).set({ yen: fPlayer.yen + total }).where(eq(players.discord_id, interaction.user.id)).run();
+    const fData = jobData(fPlayer);
+    let fTotal = 0;
+    for (const ore of ORES) {
+      const qty = (fData.miner_ores || {})[ore.id] || 0;
+      fTotal += qty * ore.baseValue;
+    }
+    if (fTotal === 0) return;
+    fData.miner_ores = { iron: 0, gold: 0, gem: 0 };
+    db.update(players).set({ yen: fPlayer.yen + fTotal, job_data: JSON.stringify(fData) }).where(eq(players.discord_id, interaction.user.id)).run();
   })();
 
   const embed = new EmbedBuilder()

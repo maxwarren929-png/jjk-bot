@@ -21,7 +21,9 @@ module.exports = {
     .addSubcommand(sub => sub.setName('check').setDescription('Check if anyone has placed bounties on you'))
     .addSubcommand(sub => sub.setName('top').setDescription('View the highest individual bounties.'))
     .addSubcommand(sub => sub.setName('placed').setDescription('View all bounties placed by a specific player')
-      .addUserOption(o => o.setName('user').setDescription('The player who placed the bounties').setRequired(true))),
+      .addUserOption(o => o.setName('user').setDescription('The player who placed the bounties').setRequired(true)))
+    .addSubcommand(sub => sub.setName('target').setDescription('View all bounties on a specific player')
+      .addUserOption(o => o.setName('user').setDescription('The target player').setRequired(true))),
 
   async execute(interaction) {
     await interaction.deferReply();
@@ -122,6 +124,21 @@ module.exports = {
           `${i + 1}. <@${b.target_id}> — **${b.amount.toLocaleString()} 💰**`
         ).join('\n'))
         .setFooter({ text: `Total: ${total.toLocaleString()} 💰 across ${theirBounties.length} bounty/bounties` });
+      return interaction.editReply({ embeds: [embed] });
+    }
+
+    if (sub === 'target') {
+      const targetUser = interaction.options.getUser('user');
+      const targetBounties = db.select().from(bounties).where(eq(bounties.target_id, targetUser.id)).all();
+      if (targetBounties.length === 0) return interaction.editReply(`✅ No bounties on **${targetUser.username}**.`);
+      const total = targetBounties.reduce((sum, b) => sum + b.amount, 0);
+      const embed = new EmbedBuilder()
+        .setTitle(`🎯 Bounties on ${targetUser.username}`)
+        .setColor(0xE74C3C)
+        .setDescription(targetBounties.map((b, i) =>
+          `${i + 1}. **${b.amount.toLocaleString()} 💰** — placed by <@${b.placed_by_id}> <t:${Math.floor(b.created_at / 1000)}:R>`
+        ).join('\n'))
+        .setFooter({ text: `Total: ${total.toLocaleString()} 💰 across ${targetBounties.length} bounty/bounties` });
       return interaction.editReply({ embeds: [embed] });
     }
   },
