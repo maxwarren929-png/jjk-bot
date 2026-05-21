@@ -1,0 +1,63 @@
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { db } = require('../db/index');
+const { players } = require('../db/schema');
+const { eq } = require('drizzle-orm');
+
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('help')
+    .setDescription('Show all available commands.'),
+
+  async execute(interaction) {
+    await interaction.deferReply();
+
+    const embed = new EmbedBuilder()
+      .setTitle('📖 Cursed Energy Bot — Commands')
+      .setColor(0x9B59B6)
+      .addFields(
+        {
+          name: '👤 Profile & Progression',
+          value: '`/profile` — View or create your sorcerer profile\n'
+               + '`/techniques` — View your techniques\n'
+               + '`/train <type>` — Start a 2-hour training session\n'
+               + '`/leaderboard` — Top 10 richest players',
+          inline: false,
+        },
+        {
+          name: '⚔️ Combat',
+          value: '`/use <technique> <target>` — Use a technique on someone\n'
+               + '`/domain` — Domain Expansion (Grade 2+, costs 150 CE)\n'
+               + '`/rob <target>` — Try to steal wallet yen (1h cooldown)',
+          inline: false,
+        },
+        {
+          name: '🏦 Economy',
+          value: '`/daily` — Claim daily reward (streak bonus)\n'
+               + '`/shop` — Buy items\n'
+               + '`/bank` — Deposit/withdraw/upgrade bank\n'
+               + '`/bankrob start/join/launch` — Group bank heist\n'
+               + '`/pay <user> <amount>` — Send yen\n'
+               + '`/gamble coinflip/dice/blackjack` — Test your luck',
+          inline: false,
+        },
+        {
+          name: '💼 Jobs',
+          value: '`/job apply/quit/info` — Manage your job\n'
+               + '`/job courier/bartender/chop/fish/reel/mine/sell/smelt` — Job actions',
+          inline: false,
+        },
+        {
+          name: '⚔️ Clans',
+          value: '`/clan create/invite/join/info/leave` — Clan management',
+          inline: false,
+        },
+        {
+          name: '📦 Inventory',
+          value: '`/inventory` — View your items and consumables',
+          inline: false,
+        },
+      );
+
+    await interaction.editReply({ embeds: [embed] });
+  },
+};

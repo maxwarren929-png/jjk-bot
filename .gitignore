@@ -1,0 +1,7 @@
+node_modules/
+.env
+cursed_energy.db
+cursed_energy.db-shm
+cursed_energy.db-wal
+.opencode/node_modules/
+.opencode/opencode-loop/

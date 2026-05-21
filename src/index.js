@@ -1,0 +1,35 @@
+require('dotenv').config();
+const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
+
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent] });
+client.commands = new Collection();
+
+// Load commands
+const commandsPath = path.join(__dirname, 'commands');
+for (const file of fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'))) {
+  const cmd = require(path.join(commandsPath, file));
+  if (cmd.data && cmd.execute) client.commands.set(cmd.data.name, cmd);
+}
+
+// Load events
+const eventsPath = path.join(__dirname, 'events');
+for (const file of fs.readdirSync(eventsPath).filter(f => f.endsWith('.js'))) {
+  const event = require(path.join(eventsPath, file));
+  if (event.once) client.once(event.name, (...args) => event.execute(...args, client));
+  else client.on(event.name, (...args) => event.execute(...args, client));
+}
+
+// Passive CE regen every 5 minutes
+const { regenAllPlayers, checkAndNotifyCompletedTraining } = require('./systems/training');
+setInterval(() => regenAllPlayers(), 5 * 60 * 1000);
+
+// Training completion check every 30 seconds
+setInterval(() => checkAndNotifyCompletedTraining(client), 30 * 1000);
+
+process.on('SIGINT', () => { console.log('Shutting down...'); process.exit(0); });
+process.on('SIGTERM', () => { console.log('Shutting down...'); process.exit(0); });
+process.on('unhandledRejection', err => console.error('Unhandled rejection:', err));
+
+client.login(process.env.DISCORD_TOKEN);
