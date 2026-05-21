@@ -5,11 +5,13 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('techniqueinfo')
     .setDescription('View detailed information about a cursed technique.')
-    .addStringOption(opt => opt.setName('technique').setDescription('Technique to inspect').setRequired(true)
-      .addChoices(
-        ...TECHNIQUES.filter(t => t.is_innate || !t.parent_technique_id).slice(0, 24).map(t => ({ name: t.name, value: t.id })),
-        ...TECHNIQUES.filter(t => !t.is_innate && t.parent_technique_id).slice(0, 24).map(t => ({ name: t.name, value: t.id })),
-      )),
+    .addStringOption(opt => opt.setName('technique').setDescription('Technique to inspect').setRequired(true).setAutocomplete(true)),
+
+  async autocomplete(interaction) {
+    const focused = interaction.options.getFocused().toLowerCase();
+    const matches = TECHNIQUES.filter(t => t.name.toLowerCase().includes(focused));
+    await interaction.respond(matches.slice(0, 25).map(t => ({ name: t.name, value: t.id })));
+  },
 
   async execute(interaction) {
     await interaction.deferReply();
