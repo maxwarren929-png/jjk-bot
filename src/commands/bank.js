@@ -74,7 +74,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setTitle('🏦 Cursed Bank')
         .setColor(0xF1C40F)
-        .setDescription(`**Tier:** ${tier.name} (${refreshed.bank_max === Infinity ? '♾️' : refreshed.bank_max.toLocaleString()} max)`)
+        .setDescription(`**Tier:** ${tier.name} (${refreshed.bank_max >= Number.MAX_SAFE_INTEGER ? '♾️' : refreshed.bank_max.toLocaleString()} max)`)
         .addFields(
           { name: '👛 Wallet', value: `${refreshed.yen.toLocaleString()} 💰`, inline: true },
           { name: '🏦 Bank', value: `${(refreshed.bank_balance || 0).toLocaleString()} 💰`, inline: true },
@@ -90,7 +90,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setTitle('🏦 Bank Upgrade')
         .setColor(0x3498DB)
-        .setDescription(`Current: **${tier.name}** (${tier.max === Infinity ? '♾️' : tier.max.toLocaleString()} max)`);
+        .setDescription(`Current: **${tier.name}** (${tier.max >= Number.MAX_SAFE_INTEGER ? '♾️' : tier.max.toLocaleString()} max)`);
 
       if (!next) {
         embed.addFields({ name: 'MAXED', value: 'Your bank is already unlimited.', inline: false });
@@ -99,7 +99,7 @@ module.exports = {
 
       embed.addFields({
         name: `Next: ${next.name}`,
-        value: `⬆️ ${next.max === Infinity ? '♾️' : next.max.toLocaleString()} max — **${next.cost.toLocaleString()} 💰**`,
+        value: `⬆️ ${next.max >= Number.MAX_SAFE_INTEGER ? '♾️' : next.max.toLocaleString()} max — **${next.cost.toLocaleString()} 💰**`,
         inline: false,
       });
 
@@ -157,7 +157,7 @@ module.exports = {
       if (!amount || amount <= 0) return interaction.editReply('❌ Specify an amount or use `all: true`.');
       if (amount > walletYen) return interaction.editReply(`❌ You only have **${walletYen.toLocaleString()} 💰** in your wallet.`);
       const canStore = fresh.bank_max - bankBal;
-      if (canStore <= 0) return interaction.editReply(`❌ Your bank is full (${fresh.bank_max === Infinity ? '♾️' : fresh.bank_max.toLocaleString()} max). Upgrade first.`);
+      if (canStore <= 0) return interaction.editReply(`❌ Your bank is full (${fresh.bank_max >= Number.MAX_SAFE_INTEGER ? '♾️' : fresh.bank_max.toLocaleString()} max). Upgrade first.`);
       let depositedAmount = 0;
       sqlite.transaction(() => {
         const f = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();

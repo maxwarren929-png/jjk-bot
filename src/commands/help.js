@@ -11,94 +11,119 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setTitle('📖 Cursed Energy Bot — Commands')
       .setColor(0x9B59B6)
+      .setDescription('Commands organized by activity. Use `/` + command name for details.')
       .addFields(
         {
-           name: '👤 Profile & Progression',
-          value: '`/profile` — View or create your sorcerer profile (shows equipment)\n'
-               + '`/techniques` — View your techniques with mastery\n'
-               + '`/techniqueinfo <technique>` — Detailed technique stats\n'
-               + '`/rank` — View your PvP rating and leaderboard position\n'
-                + '`/lastfight` — View your most recent combat result\n'
-                + '`/analyze <target>` — Scout another player\'s combat stats\n'
-                + '`/cooldowns` — View all active cooldowns\n'
-               + '`/rest` — Rest for 30s to recover 30% HP\n'
-               + '`/meditate` — Meditate for 60s to recover 90 CE in bursts\n'
-               + '`/train start <type>` — Begin a 2-hour training session\n'
-               + '`/train status` — Check training progress\n'
-               + '`/train cancel` — Cancel current training (no refund)\n'
-               + '`/reset` — Permanently delete your profile and start over\n'
-                + '`/leaderboard` — Top players by wealth, wins, grade, or bounty kills\n'
-                + '`/history` — View your recent PvP fight history\n'
-               + '`/rankup` — Check grade progression requirements\n'
-               + '`/achievements` — View your earned achievements and progress',
+          name: '👤 Profile & Progression',
+          value: [
+            '`/profile` — View or create your sorcerer profile',
+            '`/analyze <target>` — Scout another player\'s stats',
+            '`/inspect <user>` — View another player\'s equipment and grade',
+            '`/techniques` — View your techniques with mastery',
+            '`/techniqueinfo <technique>` — Detailed technique stats',
+            '`/rank` — View your PvP rating and leaderboard position',
+            '`/lastfight` — View your most recent combat result',
+            '`/share` — Share your last fight in chat',
+            '`/record` — View detailed combat record',
+            '`/cooldowns` — View all active cooldowns',
+            '`/leaderboard` — Top players by wealth, wins, grade, kills',
+            '`/history` — Recent PvP fight history',
+            '`/rankup` — Grade progression requirements',
+            '`/achievements` — Earned achievements and progress',
+          ].join('\n'),
           inline: false,
         },
         {
-          name: '⚔️ Combat',
-          value: '`/use <technique> <target>` — Use a technique on someone\n'
-               + '`/spar <opponent>` — Practice combat against AI (no rewards/penalties)\n'
-               + '`/domain` — Domain Expansion (Grade 2+, costs 150 CE)\n'
-                + '`/rob <target>` — Try to steal wallet yen (1h cooldown)\n'
-                + '`/hunt` — Hunt cursed spirits for CE, yen, and items (30m cooldown)\n'
-                + '`/curse <target>` — Place a debuff on a player (-20% dmg, 2 min)\n'
-                + '`/curseinfo` — Check your active curses and debuffs\n'
-                + '`/rebuke` — Remove active curses by spending CE\n'
-                + '`/sacrifice <hp>` — Convert HP to CE (2:1 ratio)\n'
-                + '`/heal <hp>` — Use Reverse Cursed Technique to convert CE → HP (1:3)\n'
-                + '`/vow` — Binding Vow: sacrifice HP for +25% damage on next fight\n'
-                + '`/focus` — Sacrifice HP to boost CE regen for 5 min\n'
-                + '`/patrol` — Go on a 15m patrol for passive yen\n'
-                + '`/record` — View your detailed combat record and statistics\n'
-                + '`/bless <target> <amount>` — Heal a player by spending CE',
+          name: '⚔️ Combat & PvP',
+          value: [
+            '`/use <technique> <target>` — Attack a player with a technique',
+            '`/duel <target> <stake>` — Challenge to a duel with yen pot',
+            '`/spar <opponent>` — Practice combat vs AI (no penalty)',
+            '`/domain` — Domain Expansion (Grade 2+, costs 150 CE)',
+            '`/rob <target>` — Try to steal wallet yen (1h cooldown)',
+            '`/hunt` — Hunt cursed spirits (30m cooldown)',
+            '`/curse <target>` — Place a -20% damage debuff (2 min)',
+            '`/curseinfo` — Check active curses on you',
+            '`/rebuke` — Remove curses by spending CE',
+            '`/bless <target> <amount>` — Heal another player with CE',
+          ].join('\n'),
           inline: false,
         },
         {
-           name: '🏦 Economy & Info',
-          value: '`/daily claim` — Claim daily reward (streak bonus)\n'
-               + '`/daily info` — Check daily streak and next claim\n'
-               + '`/shop` — Browse and buy items\n'
-               + '`/buy <item> [quantity]` — Quick-buy with bulk support\n'
-               + '`/stats` — Server-wide statistics\n'
-                + '`/info` — Bot and server information\n'
-                + '`/version` — Show bot version, uptime, and git info\n'
-               + '`/today` — Daily activity summary\n'
-               + '`/voterewards` — Claim daily voting reward (CE + yen)\n'
-               + '`/enhance <slot>` — Upgrade equipped gear with CE\n'
-                + '`/vault balance/deposit/withdraw` — Protected yen storage that survives death\n'
-                + '`/lock create/claim/list` — Lock yen for 24h to earn 5% interest\n'
-                + '`/bank balance/deposit/withdraw/upgrade` — Manage your cursed bank account\n'
-               + '`/bankrob start/join/launch` — Group bank heist\n'
-                + '`/pay <user> <amount>` — Send yen\n'
-                + '`/donate <target> <item>` — Give an inventory item to another player\n'
-                + '`/scavenge` — Search for items or yen (5m cooldown)\n'
-               + '`/bounty place/list/cancel/check/top/placed` — Place, view, cancel, or top bounties\n'
-               + '`/gamble coinflip/dice/blackjack` — Test your luck',
+          name: '💚 Recovery & Buffs',
+          value: [
+            '`/rest` — Rest 30s to recover 30% HP',
+            '`/meditate` — Meditate 60s to recover 90 CE',
+            '`/heal <hp>` — RCT: convert CE → HP (1:3 ratio)',
+            '`/sacrifice <hp>` — Convert HP → CE (2:1 ratio)',
+            '`/vow` — Binding Vow: HP for +25% damage next fight',
+            '`/focus` — Sacrifice HP for 5min CE regen boost',
+            '`/train start/status/cancel` — 2-hour training sessions',
+          ].join('\n'),
           inline: false,
         },
         {
-          name: '💼 Jobs',
-          value: '`/job apply/quit/info` — Manage your job\n'
-               + '`/job courier/bartender/chop/fish/reel/mine/ores/sell/smelt` — Job actions',
+          name: '💰 Economy & Banking',
+          value: [
+            '`/daily` — Claim daily reward with streak bonus',
+            '`/voterewards` — Claim voting reward (CE + yen)',
+            '`/bank balance/deposit/withdraw/upgrade` — Manage bank',
+            '`/vault balance/deposit/withdraw` — Death-protected storage',
+            '`/lock create/claim/list` — Lock yen for 24h (5% interest)',
+            '`/pay <user> <amount>` — Send yen to another player',
+            '`/bankrob start/join/launch` — Group bank heist',
+            '`/bounty place/list/cancel/check/top` — Bounty system',
+            '`/appeal` — Pay 1.5x to clear all bounties on you',
+            '`/gamble coinflip/dice/blackjack` — Test your luck',
+          ].join('\n'),
           inline: false,
         },
         {
-          name: '⚔️ Clans',
-          value: '`/clan create/invite/join/info/leave/transfer/kick/rename/disband/invites/members` — Management\n'
-               + '`/clan setpassive/setinviteonly/setdescription` — Leader settings\n'
-               + '`/clan deposit/withdraw/balance` — Clan bank (withdraw leader only)',
+          name: '🛒 Shop & Inventory',
+          value: [
+            '`/shop` — Browse and buy items',
+            '`/buy <item> [quantity]` — Quick-buy with bulk support',
+            '`/inventory view/use/sell/give/equip/unequip` — Manage items',
+            '`/trash` — Delete an item (no refund)',
+            '`/compact` — Combine 3 identical items into 1',
+            '`/equipment` — View your current gear and bonuses',
+            '`/enhance <slot>` — Upgrade equipped gear with CE',
+            '`/iteminfo <item>` — Detailed stats on any item',
+            '`/collection` — Browse all equipment and items',
+          ].join('\n'),
           inline: false,
         },
         {
-           name: '📦 Inventory & Equipment',
-           value: '`/inventory view/use/sell/give` — Manage and gift your items\n'
-                + '`/trash` — Delete an item from inventory (no refund)\n'
-                + '`/compact` — Combine 3 identical items to free inventory space\n'
-                + '`/whisper <target> <message>` — Send an anonymous message (costs CE)\n'
-                + '`/inventory equip/unequip` — Equip weapons and armor from your inventory\n'
-               + '`/equipment` — Quick view your current gear and bonuses\n'
-               + '`/iteminfo <item>` — View detailed stats on any item\n'
-               + '`/collection` — Browse all equipment and items\n'
-               + 'Use **HP Potion** & **CE Elixir** to heal instantly. Equip **cursed tools** for combat bonuses.',
+          name: '💼 Jobs & Activities',
+          value: [
+            '`/job apply/quit/info` — Manage your job',
+            '`/job courier/bartender/chop/fish/reel/mine/ores/sell/smelt` — Job actions',
+            '`/scavenge` — Search for items or yen (5m cooldown)',
+            '`/patrol` — 15m passive yen generation',
+          ].join('\n'),
+          inline: false,
+        },
+        {
+          name: '🏰 Clans',
+          value: [
+            '`/clan create/invite/join/info/leave/transfer/kick` — Management',
+            '`/clan rename/disband/invites/members` — Settings',
+            '`/clan setpassive/setinviteonly/setdescription` — Leader settings',
+            '`/clan deposit/withdraw/balance` — Clan bank',
+          ].join('\n'),
+          inline: false,
+        },
+        {
+          name: '🔧 Utilities',
+          value: [
+            '`/info` — Bot and server information',
+            '`/today` — Daily activity summary',
+            '`/stats` — Server-wide statistics',
+            '`/version` — Bot version, uptime, git info',
+            '`/reset` — Delete your profile and start over',
+            '`/remind <minutes> [message]` — Set a DM reminder',
+            '`/whisper <target> <message>` — Anonymous DM (costs CE)',
+          ].join('\n'),
           inline: false,
         },
       );

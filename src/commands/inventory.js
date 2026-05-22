@@ -3,7 +3,7 @@ const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 
-const { EQUIPMENT_ITEMS, SLOTS } = require('../data/equipment');
+const { EQUIPMENT_ITEMS } = require('../data/equipment');
 const { equipItem, unequipItem, formatEquipmentEmbed } = require('../systems/equipment');
 const { SHOP_CATALOG } = require('../systems/economy');
 

@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
-const { eq } = require('drizzle-orm');
+const { eq, sql } = require('drizzle-orm');
 
 const PATROL_DURATION = 15 * 60 * 1000;
 const GRADE_BASE = { 'Grade 4': 20, 'Grade 3': 40, 'Grade 2': 60, 'Grade 1': 80, 'Semi-Special Grade': 120, 'Special Grade': 200 };
@@ -41,7 +41,7 @@ module.exports = {
         if (!p || p.until !== until) return;
         activePatrols.delete(userId);
         sqlite.transaction(() => {
-          db.update(players).set({ yen: sqlite.raw(`yen + ${p.reward}`) }).where(eq(players.discord_id, userId)).run();
+          db.update(players).set({ yen: sql`yen + ${p.reward}` }).where(eq(players.discord_id, userId)).run();
         })();
         const users = await interaction.client.users.fetch(userId);
         if (users) users.send(`🚶 Patrol complete! You earned **${p.reward} 💰**.`).catch(() => {});

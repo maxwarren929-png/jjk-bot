@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
+const { formatCooldown } = require('../systems/discord-utils');
 
 const BLESS_RATIO = 2;
 const BLESS_MIN = 10;
@@ -28,8 +29,7 @@ module.exports = {
     const now = Date.now();
     const lastUse = activeBless.get(userId);
     if (lastUse && now - lastUse < BLESS_COOLDOWN) {
-      const secs = Math.ceil((BLESS_COOLDOWN - (now - lastUse)) / 1000);
-      return interaction.editReply(`⏳ Bless cooldown: **${secs}s** remaining.`);
+      return interaction.editReply(`⏳ Bless on cooldown ${formatCooldown(lastUse, BLESS_COOLDOWN)}`);
     }
 
     const ceCost = amount * BLESS_RATIO;
@@ -49,6 +49,7 @@ module.exports = {
     })();
 
     if (typeof result === 'string') return interaction.editReply(result);
+    if (!result) return interaction.editReply('❌ Something went wrong. Try again.');
     activeBless.set(userId, now);
 
     const embed = new EmbedBuilder()

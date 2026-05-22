@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
+const { formatCooldown } = require('../systems/discord-utils');
 
 const CE_TO_HP_RATIO = 3;
 const MAX_HEAL = 100;
@@ -23,21 +24,18 @@ module.exports = {
     const now = Date.now();
     const lastUse = activeHeals.get(userId);
     if (lastUse && now - lastUse < COOLDOWN) {
-      const secs = Math.ceil((COOLDOWN - (now - lastUse)) / 1000);
-      return interaction.editReply(`⏳ Heal cooldown: **${secs}s** remaining.`);
+      return interaction.editReply(`⏳ Heal on cooldown ${formatCooldown(lastUse, COOLDOWN)}`);
     }
-
-    const ceCost = Math.ceil(hpAmount / CE_TO_HP_RATIO);
-    if (ceCost < MIN_CE) return interaction.editReply(`❌ Need at least **${MIN_CE} CE** for Reverse Cursed Technique.`);
 
     let result = null;
     sqlite.transaction(() => {
       const fresh = db.select().from(players).where(eq(players.discord_id, userId)).get();
       if (!fresh) { result = '❌ Run `/profile` first.'; return; }
       if (fresh.hp >= fresh.max_hp) { result = '❌ Your HP is already full.'; return; }
-      if (fresh.ce < ceCost) { result = `❌ Not enough CE. Need **${ceCost}**, have **${fresh.ce}**.`; return; }
       const actualHeal = Math.min(hpAmount, fresh.max_hp - fresh.hp);
       const actualCost = Math.ceil(actualHeal / CE_TO_HP_RATIO);
+      if (actualCost < MIN_CE) { result = `❌ Minimum heal amount is **${MIN_CE * CE_TO_HP_RATIO} HP** (costs **${MIN_CE} CE**).`; return; }
+      if (fresh.ce < actualCost) { result = `❌ Not enough CE. Need **${actualCost}**, have **${fresh.ce}**.`; return; }
       db.update(players).set({ hp: fresh.hp + actualHeal, ce: fresh.ce - actualCost }).where(eq(players.discord_id, userId)).run();
       result = { heal: actualHeal, cost: actualCost };
     })();

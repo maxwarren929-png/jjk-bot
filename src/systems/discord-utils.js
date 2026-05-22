@@ -357,6 +357,19 @@ async function dodgeCheck(channel, targetUser, durationMs = 2000) {
   } catch { return false; }
 }
 
+function formatCooldown(lastUse, cooldownMs) {
+  if (!lastUse) return '✅ Available now';
+  const remaining = cooldownMs - (Date.now() - lastUse);
+  if (remaining <= 0) return '✅ Available now';
+  const expiry = Date.now() + remaining;
+  const minutes = Math.floor(remaining / 60000);
+  const seconds = Math.ceil((remaining % 60000) / 1000);
+  if (minutes > 0) {
+    return `⏳ ${minutes}m ${seconds}s remaining (available <t:${Math.floor(expiry / 1000)}:R>)`;
+  }
+  return `⏳ ${seconds}s remaining (available <t:${Math.floor(expiry / 1000)}:R>)`;
+}
+
 module.exports = {
   addReaction,
   removeReaction,
@@ -390,4 +403,5 @@ module.exports = {
   setNickname,
   createTemporaryRole,
   dodgeCheck,
+  formatCooldown,
 };

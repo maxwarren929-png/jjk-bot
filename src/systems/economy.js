@@ -52,7 +52,7 @@ function applyShopEffect(player, itemId) {
         case 'BONUS_DAMAGE_20': {
           const job = safeParse(fresh.job_data);
           if (!job.__items) job.__items = [];
-          if (!job.__items.includes(item.effect)) job.__items.push(item.effect);
+          job.__items.push(item.effect);
           update.job_data = JSON.stringify(job);
           if (item.effect === 'HP_RESTORE_100') {
             update.hp = Math.min((fresh.hp || 0) + 100, fresh.max_hp);

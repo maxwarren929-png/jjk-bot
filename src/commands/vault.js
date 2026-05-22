@@ -95,7 +95,7 @@ async function withdrawVault(interaction) {
     if (vault < amount) { result = `❌ Vault only has **${vault.toLocaleString()} 💰**.`; return; }
     const remaining = vault - amount;
     job.__vault = remaining;
-    db.update(players).set({ yen: fresh.yen + amount, job_data: JSON.stringify(job) }).where(eq(players.discord_id, interaction.user.id)).run();
+    db.update(players).set({ yen: fresh.yen + (amount - fee), job_data: JSON.stringify(job) }).where(eq(players.discord_id, interaction.user.id)).run();
     result = { amount, fee, remaining };
   })();
   if (typeof result === 'string') return interaction.editReply(result);

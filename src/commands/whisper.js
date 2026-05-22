@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { db } = require('../db/index');
+const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
 
@@ -22,7 +22,11 @@ module.exports = {
     if (!player) return interaction.editReply('❌ Run `/profile` first.');
     if (player.ce < COST) return interaction.editReply(`❌ Need **${COST} CE** to whisper.`);
 
-    db.update(players).set({ ce: player.ce - COST }).where(eq(players.discord_id, interaction.user.id)).run();
+    sqlite.transaction(() => {
+      const fresh = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
+      if (!fresh || fresh.ce < COST) return;
+      db.update(players).set({ ce: fresh.ce - COST }).where(eq(players.discord_id, interaction.user.id)).run();
+    })();
 
     const embed = new EmbedBuilder()
       .setTitle('👻 Anonymous Whisper')

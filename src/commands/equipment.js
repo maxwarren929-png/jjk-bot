@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { db } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
-const { formatEquipmentEmbed, getEquipmentBonuses, getEnhancementLevel } = require('../systems/equipment');
+const { formatEquipmentEmbed, getEquipmentBonuses } = require('../systems/equipment');
 const { EQUIPMENT_ITEMS } = require('../data/equipment');
 
 module.exports = {

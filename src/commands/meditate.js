@@ -31,7 +31,8 @@ module.exports = {
             db.update(players).set({ job_data: JSON.stringify(job) }).where(eq(players.discord_id, interaction.user.id)).run();
           })();
         } else {
-          return interaction.editReply('❌ You are already meditating. Wait for it to finish.');
+          const remainSecs = Math.ceil((meditateUntil - now) / 1000);
+          return interaction.editReply(`❌ Already meditating — finishes <t:${Math.floor(meditateUntil / 1000)}:R> (**${remainSecs}s**).`);
         }
       } else {
         sqlite.transaction(() => {
@@ -39,8 +40,11 @@ module.exports = {
           if (!fresh) return;
           const fJob = (() => { try { return JSON.parse(fresh.job_data || '{}'); } catch { return {}; } })();
           delete fJob.__meditate_until;
-          const totalCe = Math.min(fresh.ce + MEDITATE_CE_PER_TICK * MEDITATE_TICKS, fresh.max_ce);
-          db.update(players).set({ ce: totalCe, job_data: JSON.stringify(fJob) }).where(eq(players.discord_id, interaction.user.id)).run();
+          const startedAt = meditateUntil - MEDITATE_DURATION;
+          const elapsed = now - startedAt;
+          const completedTicks = Math.min(MEDITATE_TICKS, Math.max(0, Math.floor(elapsed / MEDITATE_INTERVAL)));
+          const recoveredCe = MEDITATE_CE_PER_TICK * completedTicks;
+          db.update(players).set({ ce: Math.min(fresh.ce + recoveredCe, fresh.max_ce), job_data: JSON.stringify(fJob) }).where(eq(players.discord_id, interaction.user.id)).run();
         })();
         await interaction.editReply('🧘 You recovered CE from a previous meditation that was interrupted!');
         return;

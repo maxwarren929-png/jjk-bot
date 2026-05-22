@@ -99,7 +99,7 @@ module.exports = {
       return null;
     })();
     const bankMax = player.bank_max ?? 5000;
-    const footerParts = [`🏦 Bank: ${(player.bank_balance || 0).toLocaleString()} / ${bankMax === Infinity ? '♾️' : bankMax.toLocaleString()} 💰`];
+    const footerParts = [`🏦 Bank: ${(player.bank_balance || 0).toLocaleString()} / ${bankMax >= Number.MAX_SAFE_INTEGER ? '♾️' : bankMax.toLocaleString()} 💰`];
     if (clanName) footerParts.push(`⚔️ ${clanName}`);
 
     const embed = new EmbedBuilder()

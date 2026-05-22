@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, ChannelType, PermissionFlagsBits } = 
 const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
+const { formatCooldown } = require('../systems/discord-utils');
 const { getTechniqueById } = require('../systems/techniques');
 const { activateDomain } = require('../systems/domain-state');
 
@@ -55,8 +56,7 @@ module.exports = {
 
     const now = Date.now();
     if (player.last_domain_at && now - player.last_domain_at < RATE_LIMIT_MS) {
-      const wait = Math.ceil((RATE_LIMIT_MS - (now - player.last_domain_at)) / 1000);
-      await interaction.editReply(`⏳ Domain cooldown: **${wait}s** remaining.`); return;
+      await interaction.editReply(`⏳ Domain on cooldown ${formatCooldown(player.last_domain_at, RATE_LIMIT_MS)}`); return;
     }
 
     const innate = getTechniqueById(player.innate_technique_id);

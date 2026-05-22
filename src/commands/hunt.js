@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
+const { formatCooldown } = require('../systems/discord-utils');
 
 const HUNT_COOLDOWN = 30 * 60 * 1000;
 
@@ -43,7 +44,7 @@ module.exports = {
     if (!player) return interaction.editReply('❌ Run `/profile` first.');
 
     const check = canHunt(player);
-    if (!check.ok) return interaction.editReply(`❌ You must wait **${check.remaining} min** before hunting again.`);
+    if (!check.ok) return interaction.editReply(`❌ Hunt on cooldown ${formatCooldown(player.last_hunt_at, HUNT_COOLDOWN)}`);
 
     const spirit = SPIRITS[Math.floor(Math.random() * SPIRITS.length)];
     const result = HUNT_RESULTS[Math.floor(Math.random() * HUNT_RESULTS.length)];

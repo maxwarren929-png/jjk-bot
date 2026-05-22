@@ -21,8 +21,7 @@ function getCooldowns(userId) {
 
 function getTechsForPlayer(player) {
   const { innate, unlocked } = getPlayerTechniques(player);
-  const punch = getTechniqueById('punch');
-  return [innate, ...unlocked, punch].filter(Boolean);
+  return [innate, ...unlocked].filter(Boolean);
 }
 
 function buildBar(current, max, filled = '🟥', empty = '⬛', blocks = 10) {

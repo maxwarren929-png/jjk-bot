@@ -21,6 +21,8 @@ module.exports = {
 
   async execute(interaction) {
     const itemKey = interaction.options.getString('item');
+    await interaction.deferReply();
+
     const player = db.select().from(players).where(eq(players.discord_id, interaction.user.id)).get();
     if (!player) return interaction.editReply('❌ Run `/profile` first.');
 
@@ -32,8 +34,6 @@ module.exports = {
       new ButtonBuilder().setCustomId('trash_confirm').setLabel('🗑️ Yes, delete it').setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId('trash_cancel').setLabel('Cancel').setStyle(ButtonStyle.Secondary),
     );
-
-    await interaction.deferReply();
     await interaction.editReply({ content: `🗑️ Are you sure you want to delete this item? There is **no refund**.`, components: [confirm] });
 
     const col = interaction.channel.createMessageComponentCollector({ filter: i => i.user.id === interaction.user.id, time: 15_000, max: 1 });

@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { db, sqlite } = require('../db/index');
 const { players } = require('../db/schema');
 const { eq } = require('drizzle-orm');
+const { formatCooldown } = require('../systems/discord-utils');
 
 const GRADE_ORDER = ['Grade 4', 'Grade 3', 'Grade 2', 'Grade 1', 'Semi-Special Grade', 'Special Grade'];
 const COOLDOWN_MS = 3600000;
@@ -32,8 +33,7 @@ module.exports = {
     if (target.yen < MIN_TARGET_YEN) return interaction.editReply(`❌ **${targetUser.username}** only has ${target.yen} 💰 — not worth the risk.`);
 
     if (actor.last_robbed_at && Date.now() - actor.last_robbed_at < COOLDOWN_MS) {
-      const wait = Math.ceil((COOLDOWN_MS - (Date.now() - actor.last_robbed_at)) / 60000);
-      return interaction.editReply(`⏳ Rob cooldown: **${wait}m** remaining.`);
+      return interaction.editReply(`⏳ Rob on cooldown ${formatCooldown(actor.last_robbed_at, COOLDOWN_MS)}`);
     }
 
     const actorGradeIdx = GRADE_ORDER.indexOf(actor.grade);
@@ -62,7 +62,7 @@ module.exports = {
         freshTargetData = fTarget;
         const actualSteal = Math.min(Math.floor(fTarget.yen * STEAL_PCT), MAX_STEAL);
         finalStealAmount = actualSteal;
-        db.update(players).set({ yen: fTarget.yen - actualSteal }).where(eq(players.discord_id, targetUser.id)).run();
+        db.update(players).set({ yen: Math.max(0, fTarget.yen - actualSteal) }).where(eq(players.discord_id, targetUser.id)).run();
         db.update(players).set({ yen: fActor.yen + actualSteal, last_robbed_at: Date.now() }).where(eq(players.discord_id, userId)).run();
         newActorYen = fActor.yen + actualSteal;
         newTargetYen = fTarget.yen - actualSteal;
